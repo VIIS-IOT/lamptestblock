@@ -101,16 +101,7 @@ CROP_Y1 = 345
 CROP_Y2 = 455
 CROP_X1 = 290
 CROP_X2 = 840
-# regions = {
-#     "tube_1": (33, 26, 48, 52),
-#     "tube_2": (66, 26, 84, 50),
-#     "tube_3": (101, 26, 120, 50),
-#     "tube_4": (139, 26, 156, 50),
-#     "tube_5": (176, 26, 193, 50),
-#     "tube_6": (212, 26, 229, 50),
-#     "tube_7": (251, 26, 266, 50),
-#     "tube_8": (286, 30, 298, 52)
-# }
+
 
 # Function to convert hue to pH
 def hue_to_ph(hue):
@@ -214,13 +205,14 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
         # Construct the raspistill command
         command = [
             'raspistill',
-            '-o', output_path,
-            '-ex', 'night',
+            '-o', output_path,            
             '-w', '1280',
             '-h', '960',
             '-q', '85',
-            '-t', '2000',
-            '-hf','-vf'  # 2 seconds delay before capture
+            '-t', '1000',
+            '-hf','-vf',
+            '-ss','14000',
+            '-awb','auto' # 2 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
