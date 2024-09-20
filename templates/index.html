@@ -1,5 +1,4 @@
-
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 
 <head>
@@ -9,8 +8,8 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
 
-    <!-- Optional theme -->
-    <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css">
+    <!-- Loại bỏ Optional theme nếu không cần thiết -->
+    <!-- <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css"> -->
     <script src="/static/js/plotly.min.js"></script>
 
     <style>
@@ -67,94 +66,33 @@
             background-color: #f8f9fa;
         }
     </style>
-    
+
 </head>
 
 <body>
     <div class="container">
         <h1 class="mb-4 text-center">LAMP: Trích xuất giá trị màu sắc HUE từ ống nghiệm </h1>
-        
+
         <!-- Button Group -->
         <div class="section-divider">
-            <div id="controls" class="d-flex flex-wrap justify-content-center">
-                <button class="btn btn-primary" onclick="changeState('Running', startCapture)">Bắt đầu</button>
-                <button class="btn btn-warning" onclick="changeState('Pause', pauseCapture)">Tạm dừng</button>
-                <button class="btn btn-success" onclick="changeState('Resume', resumeCapture)">Tiếp tục</button>
-                <button class="btn btn-danger" onclick="changeState('Reset', resetCapture)">Làm lại</button>
-                <button class="btn btn-info" onclick="changeState('Downloading CSV', downloadCSV)">Tải kết quả</button>
-                <button class="btn btn-info" onclick="changeState('Downloading Image', downloadImages)">Tải ảnh</button>
+            <div id="controls" class="d-flex flex-wrap justify-content-center btn-group-custom">
+                <button class="btn btn-primary mb-2 mx-1" onclick="changeState('Running', startCapture)">Bắt
+                    đầu</button>
+                <button class="btn btn-warning mb-2 mx-1" onclick="changeState('Pause', pauseCapture)">Tạm dừng</button>
+                <button class="btn btn-success mb-2 mx-1" onclick="changeState('Resume', resumeCapture)">Tiếp
+                    tục</button>
+                <button class="btn btn-danger mb-2 mx-1" onclick="changeState('Reset', resetCapture)">Làm lại</button>
+                <button class="btn btn-info mb-2 mx-1" onclick="changeState('Downloading CSV', downloadCSV)">Tải kết
+                    quả</button>
+                <button class="btn btn-info mb-2 mx-1" onclick="changeState('Downloading Image', downloadImages)">Tải
+                    ảnh</button>
             </div>
-        </div>
-        <div id="status">Trạng thái: Chờ lệnh</div>
-        <!-- Program and Temperature Settings -->
-        <div class="section-divider">
-            <div id="controls" class="d-flex flex-wrap justify-content-center">
-                <div class="input-group mb-3">
-                    <label for="programSelect" class="input-group-text">Chương trình:</label>
-                    <select id="programSelect" class="form-select">
-                        <option value="1">1: Làm quen quy trình</option>
-                        <option value="2">2: Chạy thử mẫu</option>
-                    </select>
-                </div>
-
-                <div class="input-group mb-3">
-                    <label for="temperature" class="input-group-text">Cài nhiệt độ (C):</label>
-                    <input type="number" id="temperature" class="form-control" value="25">
-                </div>
-
-                <div class="input-group mb-3">
-                    <label for="checkTime" class="input-group-text">Cài T1 (s):</label>
-                    <input type="number" id="checkTime" class="form-control" value="900">
-                </div>
-
-                <div class="input-group mb-3">
-                    <label for="processTime" class="input-group-text">Cài thời gian chạy (s):</label>
-                    <input type="number" id="processTime" class="form-control" value="1800">
-                </div>
-
-                <button class="btn btn-primary" onclick="runProgram()">Chạy chương trình</button>
-            </div>
-        </div>
-
-        <!-- Result Display -->
-        <div class="section-divider">
-            <div id="result">
-                <h4>Thời gian: <span id="elapsed_time"> s</span></h4>
-                <h4>Kết quả: <span id="totalResultText">Chờ lệnh...</span></h4>
-                
-                <table id="resultTable" class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Ống</th>
-                            <th>Giá trị HUE</th> <!-- New Column for Hue Values -->
-                            <th>Giá trị C</th>
-                            <th>Kết quả</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Rows will be dynamically inserted here -->
-                    </tbody>
-                </table>
-                
-            </div>
-        </div>
-
-        
-
-        <!-- Plot and Image Display -->
-        <div class="section-divider">
-            <div class="row">
-                <div class="col-12 col-md-3">
-                    <h3>Ảnh chụp mới nhất </h3>
-                    <img id="latestImage" src="" alt="Latest Image" class="img-fluid" />
-        </div>
-        <div class="section-divider">
-            <div>
-                <h3>Cài đặt nhiệt độ</h3>
-                <div id="temperature_values">
-                    <p>Hiện tại: <span id="temp_value">-</span> °C</p>
-                    <p>Giá trị thiết lập: <span id="setpoint_value">-</span> °C</p>
-                    <p>Tín hiệu điều khiển: <span id="output_value">-</span></p>
+            <!-- Temperature Settings -->
+            <div id="temperature_values" class="mt-3">
+                <div class="row">
+                    <div id="temperature_values">
+                        <p>Nhiệt độ hiện tại: <span id="temp_value">-</span> °C</p>
+                    </div>
                 </div>
                 <div class="input-group mb-3">
                     <label for="setTemperature" class="input-group-text">Cài giá trị mới:</label>
@@ -165,316 +103,81 @@
                 </div>
             </div>
         </div>
-        <div class="section-divider">  
-                <div style="margin-top: 2rem;" class="col-12 col-md-9 ">
-                    <h3>ĐỒ THỊ GIÁ TRỊ HUE </h3>
-                    <div class="graph graph-container" id="graph"></div>
-                </div>
-        </div>
-        
 
     </div>
+    <div id="status">Trạng thái: Chờ lệnh</div>
+    <!-- Program and Temperature Settings -->
+    <div class="section-divider">
+        <div id="controls" class="d-flex flex-wrap justify-content-center">
+            <div class="input-group mb-3">
+                <label for="programSelect" class="input-group-text">Chương trình:</label>
+                <select id="programSelect" class="form-select">
+                    <option value="1">1: Làm quen quy trình</option>
+                    <option value="2">2: Chạy thử mẫu</option>
+                </select>
+            </div>
 
-    <script defer src="/static/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Your JavaScript functions will be here
-    </script>
+            <div class="input-group mb-3">
+                <label for="temperature" class="input-group-text">Cài nhiệt độ (C):</label>
+                <input type="number" id="temperature" class="form-control" value="25">
+            </div>
+
+            <div class="input-group mb-3">
+                <label for="checkTime" class="input-group-text">Cài T1 (s):</label>
+                <input type="number" id="checkTime" class="form-control" value="900">
+            </div>
+
+            <div class="input-group mb-3">
+                <label for="processTime" class="input-group-text">Cài thời gian chạy (s):</label>
+                <input type="number" id="processTime" class="form-control" value="1800">
+            </div>
+
+            <button class="btn btn-primary" type="button" onclick="runProgram()">Chạy chương trình</button>
+        </div>
+    </div>
+
+    <!-- Result Display -->
+    <div class="section-divider">
+        <div id="result">
+            <h4>Thời gian: <span id="elapsed_time"> s</span></h4>
+            <h4>Kết quả: <span id="totalResultText">Chờ lệnh...</span></h4>
+
+            <table id="resultTable" class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Ống</th>
+                        <th>Giá trị HUE</th> <!-- New Column for Hue Values -->
+                        <th>Giá trị C</th>
+                        <th>Kết quả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be dynamically inserted here -->
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <!-- Plot and Image Display -->
+    <div class="section-divider">
+        <div class="row">
+            <div class="col-12 col-md-3">
+                <h3>Ảnh chụp mới nhất</h3>
+                <img id="latestImage" src="" alt="Latest Image" class="img-fluid" />
+            </div>
+            <div class="section-divider">
+                <div style="margin-top: 2rem;" class="col-12 col-md-9">
+                    <h3>ĐỒ THỊ GIÁ TRỊ HUE</h3>
+                    <div class="graph graph-container" id="graph"></div>
+                </div>
+            </div>
+        </div>
+
+        <script defer src="/static/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Your JavaScript functions will be here
+        </script>
 </body>
 
 </html>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            // Fetch status when the page loads
-            fetchStatus();
-        });
-        let systemStatus = 'Đang chờ lệnh';  // Initialize system status globally
-        function clearTableData() {
-            const tableBody = document.getElementById('resultTable').querySelector('tbody');
-            tableBody.innerHTML = ''; // Clear all rows in the table body
-            document.getElementById('totalResultText').textContent = 'Chờ lệnh...'; // Reset the result text
-        }
-
-        function updateStatus(message) {
-            const statusElement = document.getElementById('status');
-            statusElement.innerText = `Trạng thái hiện tại: ${systemStatus} \n ${message}`;
-        }
-
-        function runProgram() {
-            clearTableData();  // Clear the table before starting a new program
-            const program = document.getElementById('programSelect').value;
-            const temperature = document.getElementById('temperature').value;
-            const checkTime = document.getElementById('checkTime').value;
-            const processTime = document.getElementById('processTime').value;
-
-            fetch('/run_program', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    program: program,
-                    temperature: temperature,
-                    checkTime: checkTime,
-                    processTime: processTime
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Set program parameters, but keep the current system status
-                    updateStatus(`Chương trình ${data.program_name} đã được thiết lập với:
-                        T1: ${checkTime} giây
-                        Thời gian chạy: ${processTime} giây
-                        Nhiệt độ: ${temperature}°C`);
-
-                } else {
-                    updateStatus(`Error: ${data.message}`);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                updateStatus('Failed to set program parameters.');
-            });
-        }      
-
-
-                function showMessage(message) {
-                    alert(message);
-                }
-
-        function updateState(newState) {
-             // Update the status on the page
-             document.getElementById('status').innerText = `Trạng thái hiện tại: ${newState}`;
-            
-            // Save the status to the backend
-            fetch('/status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: newState })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status !== 'success') {
-                    console.error('Error updating status:', data);
-                }
-            })
-            .catch(error => console.error('Error updating status:', error));
-        }
-
-        function fetchStatus() {
-            fetch('/status')
-                .then(response => response.json())
-                .then(data => {
-                    const statusElement = document.getElementById('status');
-
-                    // Map program numbers to their names
-                    const programNames = {
-                        "1": "Làm quen quy trình",
-                        "2": "Chạy mẫu thử"
-                    };
-
-                    // Get the program name based on the program number
-                    const programName = programNames[data.program];
-
-                    if (data.program !== null) {
-                        statusElement.innerText = `
-                            Trạng thái: ${data.status}
-                            Chương trình ${data.program}: ${programName}
-                            Thời gian T1: ${data.check_time_t1} giây
-                            Thời gian chạy: ${data.process_time} giây
-                            Nhiệt độ: ${data.temperature}°C
-                        `;
-                    } else {
-                        statusElement.innerText = `Trạng thái: ${data.status}`;
-                    }
-                })
-                .catch(error => console.error('Error fetching status:', error));
-        }
-
-
-
-        function changeState(newState, actionFunc) {
-            updateState(newState);
-            actionFunc().then(response => {
-                if (response.ok) {
-                    showMessage("SYSTEM IS " + newState);
-                } else {
-                    showMessage("SYSTEM ERROR: " + newState);
-                }
-            }).catch(error => {
-                showMessage("SYSTEM ERROR: " + error.message);
-            });
-        }
-        
-
-        let isSettingTemperature = false;       
-
-        // Unified fetch function that replaces all individual fetches
-        function fetchAllData() {
-            
-            fetch('/fetch_all_data')
-                .then(response => response.json())
-                .then(data => {
-                    // Update temperature data
-                    if (data.temperature) {
-                        document.getElementById('temp_value').textContent = data.temperature.temperature.toFixed(1);
-                        document.getElementById('setpoint_value').textContent = data.temperature.setpoint.toFixed(1);
-                        document.getElementById('output_value').textContent = data.temperature.output.toFixed(1);
-                    } else {
-                        document.getElementById('temp_value').textContent = 'N/A';
-                        document.getElementById('setpoint_value').textContent = 'N/A';
-                        document.getElementById('output_value').textContent = 'N/A';
-                    }
-
-                    // Update program result
-                    if (data.program_result && data.program_result.table_data) {
-                        document.getElementById('totalResultText').textContent = data.program_result.total_result || 'Waiting for result...';
-
-                        // Clear the table body before updating
-                        const tableBody = document.getElementById('resultTable').querySelector('tbody');
-                        tableBody.innerHTML = '';
-
-                        // Populate the table with the updated data
-                        data.program_result.table_data.forEach(row => {
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
-                                <td>${row.Tube}</td>
-                                <td>${typeof row['Hue Value'] === 'number' ? row['Hue Value'].toFixed(2) : 'N/A'}</td>
-                                <td>${typeof row['C Value'] === 'number' ? row['C Value'].toFixed(2) : 'N/A'}</td>
-                                <td>${row.Result}</td>
-                            `;
-                            tableBody.appendChild(tr);
-                        });
-                    }
-
-                    // Update elapsed time
-                    if (data.elapsed_time !== undefined) {
-                        document.getElementById('elapsed_time').textContent = `${Math.floor(data.elapsed_time)} s`;
-                    }
-
-                    // Update image
-                    if (data.image_url) {
-                        document.getElementById('latestImage').src = data.image_url;
-                    }
-
-                    // Update plot data using Plotly
-                    if (data.plot_data && data.plot_data.data && data.plot_data.layout) {
-                        const graphDiv = document.getElementById('graph');
-                        Plotly.react(graphDiv, data.plot_data.data, data.plot_data.layout);
-                    }
-                })
-                .catch(error => console.error('Error fetching all data:', error));
-        }
-
-
-
-        function startCapture() {
-            clearTableData();  // Clear the table before starting a new program
-            fetch('/start')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Đang chạy';
-                updateStatus('Thiết bị đã hoạt động.');
-            })
-            .catch(error => {
-                updateStatus('Không thể khởi động hệ thống.');
-                console.error('Lỗi:', error);
-            });
-        }
-
-        function pauseCapture() {
-            fetch('/pause')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Tạm dừng';
-                updateStatus('Thiết bị tạm dừng.');
-            })
-            .catch(error => {
-                updateStatus('Không thể tạm dừng hệ thống.');
-                console.error('Lỗi:', error);
-            });
-        }
-
-        function resumeCapture() {
-            fetch('/resume')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Tiếp tục';
-                updateStatus('Thiết bị tiếp tục chạy.');
-            })
-            .catch(error => {
-                updateStatus('Không thể tiếp tụchệ thống.');
-                console.error('Lỗi:', error);
-            });
-        }
-
-        function resetCapture() {
-            clearTableData();  // Clear the table before starting a new program
-            fetch('/reset')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Reset';
-                updateStatus('System reset.');
-            })
-            .catch(error => {
-                updateStatus('Failed to reset system.');
-                console.error('Error:', error);
-            });
-        }
-
-        function downloadCSV() {
-            window.location.href = '/download_CSV';
-            //changeState('Downloading CSV', downloadCSV);
-        }
-
-        function downloadImages() {
-            window.location.href = '/download';
-            //changeState('Downloading Image', downloadImages);
-        }
-
-        
-
-        function setTemperature() {
-            const temperature = document.getElementById('setTemperature').value;
-            isSettingTemperature = true;
-
-            fetch('/set_temperature', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'value=' + temperature
-            })
-            .then(response => response.json())
-            .then(data => {
-                isSettingTemperature = false;
-                if (data.response === 'OK') {
-                alert('Temperature set successfully');
-                } else {
-                alert('Failed to set temperature');
-                }
-            })
-            .catch(error => {
-                isSettingTemperature = false;
-                console.error('Error setting temperature:', error);
-                alert('Error setting temperature');
-            });
-        }
-
-        
-
-        
-        setInterval(fetchAllData, 1000);
-
-        // Initial data fetch when the page loads
-        fetchAllData();
-        
-    </script>
-    <script defer src="/static/js/bootstrap.bundle.min.js"></script>
-
-</body>
-
-</html>   

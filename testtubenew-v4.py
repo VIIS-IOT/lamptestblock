@@ -86,17 +86,27 @@ else:
 latest_image_path = None
 capture_interval = 1
 
-# Regions for each test tube in the image
+#Regions for each test tube in the image
 regions = {
-    "tube_1": (33, 26, 48, 52),
-    "tube_2": (66, 26, 84, 50),
-    "tube_3": (101, 26, 120, 50),
-    "tube_4": (139, 26, 156, 50),
-    "tube_5": (176, 26, 193, 50),
-    "tube_6": (212, 26, 229, 50),
-    "tube_7": (251, 26, 266, 50),
-    "tube_8": (286, 30, 298, 52)
+    "tube_1": (38, 46, 68, 77),
+    "tube_2": (100, 46, 127, 77),
+    "tube_3": (162, 46, 194, 77),
+    "tube_4": (227, 46, 255, 77),
+    "tube_5": (295, 46, 322, 77),
+    "tube_6": (360, 46, 385, 77),
+    "tube_7": (425, 46, 450, 79),
+    "tube_8": (490, 46, 515, 79)
 }
+# regions = {
+#     "tube_1": (33, 26, 48, 52),
+#     "tube_2": (66, 26, 84, 50),
+#     "tube_3": (101, 26, 120, 50),
+#     "tube_4": (139, 26, 156, 50),
+#     "tube_5": (176, 26, 193, 50),
+#     "tube_6": (212, 26, 229, 50),
+#     "tube_7": (251, 26, 266, 50),
+#     "tube_8": (286, 30, 298, 52)
+# }
 
 # Function to convert hue to pH
 def hue_to_ph(hue):
@@ -167,8 +177,8 @@ def detect_test_tube(image):
                         scaled_hue[y, x] = np.ma.masked
 
             # Debugging: Print out the scaled hue values
-            # print(f"Masked hue values for {tube}: {masked_hue}")
-            # print(f"Scaled hue values for {tube}: {scaled_hue}")
+            #print(f"Masked hue values for {tube}: {masked_hue}")
+            #print(f"Scaled hue values for {tube}: {scaled_hue}")
 
             # Calculate mean of scaled hue values
             mean_scaled_hue = scaled_hue.mean()
@@ -178,16 +188,7 @@ def detect_test_tube(image):
             # mean_scaled_hue = masked_hue.mean()
             print(f"Mean hue values for {tube}: {mean_scaled_hue}")
         
-        # Apply Kalman filter to the hue value
-        # if mean_scaled_hue is not None:
-        #     state_means[i], state_covariances[i] = kf[i].filter_update(
-        #         state_means[i],
-        #         state_covariances[i],
-        #         mean_scaled_hue
-        #     )
-        #     hue = state_means[i][0]
-        # else:
-        #     hue = None
+        
 
         ph = hue_to_ph(mean_scaled_hue) if mean_scaled_hue is not None else None
 
@@ -211,10 +212,11 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             'raspistill',
             '-o', output_path,
             '-ex', 'night',
-            '-w', '640',
-            '-h', '480',
+            '-w', '1280',
+            '-h', '960',
             '-q', '85',
-            '-t', '2000'  # 2 seconds delay before capture
+            '-t', '2000',
+            '-hf','-vf'  # 2 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
@@ -513,15 +515,13 @@ def capture_and_save():
 
             # Always capture and process the image, regardless of whether a program is triggered
             image = capture_image_from_camera()
-            image = image[0:65, 155:550]
+            image = image[320:430, 320:870]
             if image is None:
                 continue
             
-            
             hue_value = detect_test_tube(image)
+           
             
-
-
             # Save the hue values and image
             timestamp = datetime.datetime.now()
             row_hue = [timestamp] + [hue_value[f'tube_{i}']["hue"] for i in range(1, 9)]
@@ -530,8 +530,9 @@ def capture_and_save():
 
             latest_image_path = os.path.join(image_dir, f'test_tube_{timestamp.strftime("%Y%m%d_%H%M%S")}.jpg')
             cv2.imwrite(latest_image_path, image)
-            print(f"Saved image: {latest_image_path}")
-
+            print(f"Saved image: {latest_image_path}")      
+            
+           
             hue_n = hue_value['tube_1']['hue']  # Assuming tube_1 is Tube N
 
             # Check if tube N hue > 100, stop the program and show the result
