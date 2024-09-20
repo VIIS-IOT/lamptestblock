@@ -88,29 +88,20 @@ capture_interval = 1
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (54, 60, 84, 90),
-    "tube_2": (114, 60, 144, 90),
-    "tube_3": (178, 60, 208, 90),
-    "tube_4": (241, 60, 271, 90),
-    "tube_5": (308, 60, 338, 90),
-    "tube_6": (375, 60, 405, 90),
-    "tube_7": (440, 60, 470, 90),
-    "tube_8": (506, 60, 536, 90)
+    "tube_1": (30, 48, 60, 80),
+    "tube_2": (92, 48, 122, 80),
+    "tube_3": (158, 48, 188, 80),
+    "tube_4": (227, 48, 257, 80),
+    "tube_5": (296, 48, 326, 80),
+    "tube_6": (365, 48, 395, 80),
+    "tube_7": (436, 48, 466, 80),
+    "tube_8": (503, 48, 533, 80)
 }
 CROP_Y1 = 345
 CROP_Y2 = 455
 CROP_X1 = 320
 CROP_X2 = 870
-# regions = {
-#     "tube_1": (33, 26, 48, 52),
-#     "tube_2": (66, 26, 84, 50),
-#     "tube_3": (101, 26, 120, 50),
-#     "tube_4": (139, 26, 156, 50),
-#     "tube_5": (176, 26, 193, 50),
-#     "tube_6": (212, 26, 229, 50),
-#     "tube_7": (251, 26, 266, 50),
-#     "tube_8": (286, 30, 298, 52)
-# }
+
 
 # Function to convert hue to pH
 def hue_to_ph(hue):
@@ -214,13 +205,14 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
         # Construct the raspistill command
         command = [
             'raspistill',
-            '-o', output_path,
-            '-ex', 'night',
+            '-o', output_path,            
             '-w', '1280',
             '-h', '960',
-            '-q', '85',
-            '-t', '2000',
-            '-hf','-vf'  # 2 seconds delay before capture
+            '-q', '100',
+            '-t', '1000',
+            '-hf','-vf',
+            '-ss','14000',
+            '-awb','auto'   # 2 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
