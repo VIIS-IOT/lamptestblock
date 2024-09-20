@@ -88,19 +88,19 @@ capture_interval = 1
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (54, 60, 84, 90),
-    "tube_2": (114, 60, 144, 90),
-    "tube_3": (178, 60, 208, 90),
-    "tube_4": (241, 60, 271, 90),
-    "tube_5": (308, 60, 338, 90),
-    "tube_6": (375, 60, 405, 90),
-    "tube_7": (440, 60, 470, 90),
-    "tube_8": (506, 60, 536, 90)
+    "tube_1": (28, 60, 88, 120),
+    "tube_2": (143, 60, 203, 120),
+    "tube_3": (270, 60, 330, 120),
+    "tube_4": (396, 60, 456, 120),
+    "tube_5": (534, 60, 594, 120),
+    "tube_6": (663, 60, 723, 120),
+    "tube_7": (800, 60, 860, 120),
+    "tube_8": (922, 60, 982, 120)
 }
-CROP_Y1 = 345
-CROP_Y2 = 455
-CROP_X1 = 320
-CROP_X2 = 870
+CROP_Y1 = 176
+CROP_Y2 = 362
+CROP_X1 = 65
+CROP_X2 = 1096
 # regions = {
 #     "tube_1": (33, 26, 48, 52),
 #     "tube_2": (66, 26, 84, 50),
@@ -214,13 +214,13 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
         # Construct the raspistill command
         command = [
             'raspistill',
-            '-o', output_path,
-            '-ex', 'night',
+            '-o', output_path,            
             '-w', '1280',
             '-h', '960',
-            '-q', '85',
-            '-t', '2000',
-            '-hf','-vf'  # 2 seconds delay before capture
+            '-q', '100',
+            '-t', '1000',
+            '-hf','-vf', 
+            '-ss','10000'  # 1 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
