@@ -13,48 +13,23 @@
     <script src="/static/js/plotly.min.js"></script>
 
     <style>
-        @font-face {
-            font-family: 'Roboto';
-            src: url('/static/font/poppins/Poppins-Regular.ttf') format('truetype');
-            font-weight: 400;
-            font-style: normal;
-        }
-
-        /* Neumorphism style variables */
-        :root {
-            --background: #e0e0e0;
-            --foreground: #e0e0e0;
-            --shadow: rgba(0, 0, 0, 0.2);
-            --light-shadow: rgba(255, 255, 255, 0.7);
-            --primary-color: #3498db;
-            --secondary-color: #2ecc71;
-            --warning-color: #f1c40f;
-            --danger-color: #e74c3c;
-            --info-color: #9b59b6;
-        }
-
         body {
             padding: 20px;
-            background: var(--background);
-            color: #333;
-            font-family: 'Poppins', sans-serif;
         }
 
         .section-divider {
             margin-top: 20px;
             margin-bottom: 20px;
             padding: 20px;
-            border-radius: 12px;
-            background: var(--foreground);
-            box-shadow: 5px 5px 10px var(--shadow),
-                -5px -5px 10px var(--light-shadow);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f9fa;
         }
 
         #latestImage {
             max-width: 100%;
             height: auto;
-            display: block;
-            margin: 0 auto;
+            align-items: center;
         }
 
         .graph-container {
@@ -63,12 +38,10 @@
             justify-content: center;
             align-items: center;
             overflow-x: hidden;
-            text-align: center;
         }
 
         .graph {
             width: 100%;
-            display: inline-block;
         }
 
         h2 {
@@ -89,25 +62,12 @@
             padding: 10px;
             font-weight: bold;
             text-align: center;
-            border-radius: 12px;
-            background: var(--foreground);
-            box-shadow: inset 5px 5px 10px var(--shadow),
-                inset -5px -5px 10px var(--light-shadow);
+            border: 2px solid #f5b861;
+            background-color: #f8f9fa;
         }
 
         .btn-group-custom button {
             margin: 5px;
-            background: var(--foreground);
-            border-radius: 12px;
-            box-shadow: 5px 5px 10px var(--shadow),
-                -5px -5px 10px var(--light-shadow);
-            border: none;
-            color: #333;
-        }
-
-        .btn-group-custom button:hover {
-            box-shadow: inset 5px 5px 10px var(--shadow),
-                inset -5px -5px 10px var(--light-shadow);
         }
 
         .input-group-custom .col-md-3 {
@@ -128,120 +88,32 @@
 
         .input-item {
             display: flex;
+            /* justify-content: center; */
+            /* Căn giữa theo chiều ngang */
             align-items: center;
+            /* Căn giữa theo chiều dọc */
             height: 100%;
+            /* Đảm bảo phần tử con chiếm toàn bộ chiều cao */
         }
 
         .input-item p {
             margin-bottom: 0;
+            /* Loại bỏ khoảng cách dưới của thẻ <p> */
         }
 
         .label-equal {
             flex-basis: 200px;
+            /* Bạn có thể điều chỉnh kích thước này cho phù hợp */
             text-align: right;
+            /* Giúp căn chỉnh nội dung của nhãn */
         }
-
-        .form-control {
-            background: var(--foreground);
-            border-radius: 12px;
-            border: none;
-            box-shadow: inset 5px 5px 10px var(--shadow),
-                inset -5px -5px 10px var(--light-shadow);
-        }
-
-        .form-control:focus {
-            box-shadow: inset 5px 5px 10px var(--shadow),
-                inset -5px -5px 10px var(--light-shadow);
-            outline: none;
-        }
-
-        .btn {
-            background: var(--foreground);
-            border-radius: 12px;
-            box-shadow: 5px 5px 10px var(--shadow),
-                -5px -5px 10px var(--light-shadow);
-            border: none;
-            color: #333;
-        }
-
-        .btn:hover {
-            box-shadow: inset 5px 5px 10px var(--shadow),
-                inset -5px -5px 10px var(--light-shadow);
-        }
-
-        /* table {
-            background: var(--foreground);
-            border-radius: 12px;
-            box-shadow: inset 5px 5px 10px var(--shadow),
-                inset -5px -5px 10px var(--light-shadow);
-        }
-
-        th,
-        td {
-            text-align: center;
-        } */
-        table {
-            width: 100%;
-            background: #f0f0f0; /* Light grey background */
-            border-radius: 12px;
-            box-shadow: 5px 5px 10px var(--shadow), -5px -5px 10px var(--light-shadow);
-            border-collapse: collapse;
-            overflow: hidden;
-        }
-
-        th,
-        td {
-            padding: 12px;
-            text-align: center;
-            background: var(--foreground);
-            box-shadow: inset 2px 2px 5px var(--shadow), inset -2px -2px 5px var(--light-shadow);
-        }
-
-        th {
-            font-weight: bold;
-        }
-
-        tbody tr:hover {
-            background: #e8e8e8;
-        }
-
-        h1,
-        h4,
-        h6 {
-            color: #333;
-        }
-
-        label {
-            color: #333;
-            margin-bottom: 0;
-        }
-
-        img {
-            border-radius: 12px;
-            box-shadow: 5px 5px 10px var(--shadow),
-                -5px -5px 10px var(--light-shadow);
-        }
-
-        /* Neumorphism style for labels */
-        .neumorphism-label {
-            background: #e0e0e0;
-            border-radius: 12px;
-            box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff;
-            padding: 10px;
-            transition: 0.3s;
-        }
-
-        /* On hover effect
-        .neumorphism-label:hover {
-            box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff;
-        } */
     </style>
 
 </head>
 
 <body>
     <div class="container">
-        <h1 class="mb-4 text-center">LAMP: Trích xuất giá trị màu sắc HUE từ ống nghiệm</h1>
+        <h1 class="mb-4 text-center">LAMP: Trích xuất giá trị màu sắc HUE từ ống nghiệm </h1>
 
         <!-- Button Group -->
         <div class="section-divider">
@@ -258,19 +130,17 @@
                     ảnh</button>
             </div>
         </div>
-
-        <!-- Temperature Display and Setting -->
         <div id="temperature_values" class="mt-3">
             <div class="container-fluid">
                 <div class="row align-items-center">
                     <!-- Nhiệt độ hiện tại -->
-                    <div class="col-12 col-md-6 input-item">
+                    <div class="col-12 col-md-12 input-item">
                         <p style="font-weight: bold;">Nhiệt độ hiện tại: <span id="temp_value">-</span> °C</p>
                     </div>
 
                     <!-- Cài đặt giá trị mới -->
-                    <div class="col-12 col-md-6 input-item d-flex align-items-center">
-                        <label for="setTemperature" class="input-label" style="flex: 0 0 48%;">Cài giá trị mới:</label>
+                    <div class="col-12 col-md-12 input-item d-flex align-items-center">
+                        <label for="setTemperature" class="input-label" style="flex: 0 0 40%;">Cài giá trị mới:</label>
                         <div class="input-group" style="flex: 1;">
                             <input type="number" id="setTemperature" class="form-control" min="0" step="1" value="25"
                                 style="margin-right: 10px;">
@@ -278,55 +148,40 @@
                                 <button class="btn btn-secondary" onclick="setTemperature()">Cập nhật</button>
                             </div>
                         </div>
+
                     </div>
+
                 </div>
             </div>
+
+
+
         </div>
-
         <div id="status">Trạng thái: Chờ lệnh</div>
-
         <!-- Program and Temperature Settings -->
         <div class="section-divider">
             <div id="controls" class="d-flex flex-wrap justify-content-center">
-                <div class="input-group mb-3"
-                    style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-                    <label for="programSelect" class="input-group-text neumorphism-label"
-                        style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Chương
-                        trình:</label>
-                    <select id="programSelect" class="form-select" style="flex: 1; max-width: 52%; padding: 10px; border-radius: 0px; border: none; 
-                               box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.1), -6px -6px 12px rgba(255, 255, 255, 0.7); 
-                               background-color: #e0e0e0; min-width: 0;">
+                <div class="input-group mb-3">
+                    <label for="programSelect" class="input-group-text">Chương trình:</label>
+                    <select id="programSelect" class="form-select">
                         <option value="1">1: Làm quen quy trình</option>
                         <option value="2">2: Chạy thử mẫu</option>
                     </select>
-
                 </div>
 
-                <div class="input-group mb-3"
-                    style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-                    <label for="temperature" class="input-group-text neumorphism-label"
-                        style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Cài nhiệt độ
-                        (C):</label>
-                    <input type="number" id="temperature" class="form-control" value="25"
-                        style="flex: 1; max-width: 52%;">
+                <div class="input-group mb-3">
+                    <label for="temperature" class="input-group-text label-equal">Cài nhiệt độ (C):</label>
+                    <input type="number" id="temperature" class="form-control" value="25">
                 </div>
 
-                <div class="input-group mb-3"
-                    style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-                    <label for="checkTime" class="input-group-text neumorphism-label"
-                        style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Cài T1
-                        (s):</label>
-                    <input type="number" id="checkTime" class="form-control" value="900"
-                        style="flex: 1; max-width: 52%;">
+                <div class="input-group mb-3">
+                    <label for="checkTime" class="input-group-text label-equal">Cài T1 (s):</label>
+                    <input type="number" id="checkTime" class="form-control" value="900">
                 </div>
 
-                <div class="input-group mb-3"
-                    style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-                    <label for="processTime" class="input-group-text neumorphism-label"
-                        style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Thời gian
-                        chạy (s):</label>
-                    <input type="number" id="processTime" class="form-control" value="1800"
-                        style="flex: 1; max-width: 52%;">
+                <div class="input-group mb-3">
+                    <label for="processTime" class="input-group-text label-equal">Cài thời gian chạy (s):</label>
+                    <input type="number" id="processTime" class="form-control" value="1800">
                 </div>
 
 
@@ -336,17 +191,10 @@
 
         <!-- Result Display -->
         <div class="section-divider">
-            <!-- <div class="col-12 col-md-3" style="margin-bottom: 2rem;">
-                <h4 style="text-align: center;">ẢNH CHỤP MỚI NHẤT</h4>
-                <img id="latestImage" src="" alt="Latest Image" class="img-fluid" />
-            </div> -->
-            <div class="col-12 col-md-3 d-flex flex-column align-items-center justify-content-center w-100"
-                style="margin-bottom: 2rem;">
+            <div class="col-12 col-md-3" style="margin-bottom: 2rem;">
                 <h4 style="text-align: center;">ẢNH CHỤP MỚI NHẤT</h4>
                 <img id="latestImage" src="" alt="Latest Image" class="img-fluid" />
             </div>
-
-
 
             <div id="result">
                 <h6>Thời gian: <span id="elapsed_time"> s</span></h6>
@@ -356,7 +204,7 @@
                     <thead>
                         <tr>
                             <th>Ống</th>
-                            <th>Giá trị HUE</th>
+                            <th>Giá trị HUE</th> <!-- New Column for Hue Values -->
                             <th>Giá trị C</th>
                             <th>Kết quả</th>
                         </tr>
@@ -365,26 +213,45 @@
                         <!-- Rows will be dynamically inserted here -->
                     </tbody>
                 </table>
-            </div>
 
+            </div>
         </div>
 
-        <!-- Plot Display -->
+
+
+        <!-- Plot and Image Display -->
         <div class="section-divider">
             <div class="row">
+
+                <!-- <div class="section-divider">
+                    <div>
+                        <h3>Cài đặt nhiệt độ</h3>
+                        <div id="temperature_values">
+                            <p>Nhiệt độ hiện tại: <span id="temp_value">-</span> °C</p>
+                        </div>
+                        <div class="input-group mb-3">
+                            <label for="setTemperature" class="input-group-text">Cài giá trị mới:</label>
+                            <input type="number" id="setTemperature" class="form-control" min="0" step="1" value="25">
+                            <div class="input-group-append">
+                                <button class="btn btn-secondary" onclick="setTemperature()">Cập nhật</button>
+                            </div>
+                        </div>
+                    </div>
+                </div> -->
                 <div class="section-divider">
-                    <div style="margin-top: 2rem;" class="col-12">
-                        <h4 class="text-center">ĐỒ THỊ GIÁ TRỊ HUE</h4>
+                    <div style="margin-top: 2rem;" class="col-12 col-md-9 ">
+                        <h4 class="text-center">ĐỒ THỊ GIÁ TRỊ HUE </h4>
                         <div class="graph graph-container" id="graph"></div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <script defer src="/static/js/bootstrap.bundle.min.js"></script>
-        <script>
-            // Your JavaScript functions will be here
-        </script>
+
+            </div>
+
+            <script defer src="/static/js/bootstrap.bundle.min.js"></script>
+            <script>
+                // Your JavaScript functions will be here
+            </script>
 </body>
 
 </html>
@@ -638,7 +505,7 @@
                 updateStatus('Thiết bị tiếp tục chạy.');
             })
             .catch(error => {
-                updateStatus('Không thể tiếp tục hệ thống.');
+                updateStatus('Không thể tiếp tụchệ thống.');
                 console.error('Lỗi:', error);
             });
     }
@@ -659,10 +526,12 @@
 
     function downloadCSV() {
         window.location.href = '/download_CSV';
+        //changeState('Downloading CSV', downloadCSV);
     }
 
     function downloadImages() {
         window.location.href = '/download';
+        //changeState('Downloading Image', downloadImages);
     }
 
 
