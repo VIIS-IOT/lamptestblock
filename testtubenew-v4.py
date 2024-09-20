@@ -732,6 +732,8 @@ def plot_graph(columns=2):
         annotations=annotations,
         margin=dict(l=5, r=5, t=50, b=10),  # Adjust margins for mobile view
         autosize=True,  # Let the plot automatically size itself
+        plot_bgcolor='lightgrey',  # Set the plot background color to light grey
+        paper_bgcolor='lightgrey',  # Set the paper (outside plot area) background color to grey
     )
     
     # Return data and layout separately
