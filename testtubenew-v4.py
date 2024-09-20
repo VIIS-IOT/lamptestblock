@@ -214,9 +214,11 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-ex', 'night',
             '-w', '1280',
             '-h', '960',
-            '-q', '85',
-            '-t', '2000',
-            '-hf','-vf'  # 2 seconds delay before capture
+            '-q', '100',
+            '-t', '1000',
+            '-hf','-vf',
+            '-ss','12000',
+              '-awb','-auto'  # 2 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
