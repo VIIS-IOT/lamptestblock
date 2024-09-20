@@ -88,15 +88,19 @@ capture_interval = 1
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (38, 46, 68, 77),
-    "tube_2": (100, 46, 127, 77),
-    "tube_3": (162, 46, 194, 77),
-    "tube_4": (227, 46, 255, 77),
-    "tube_5": (295, 46, 322, 77),
-    "tube_6": (360, 46, 385, 77),
-    "tube_7": (425, 46, 450, 79),
-    "tube_8": (490, 46, 515, 79)
+    "tube_1": (54, 60, 84, 90),
+    "tube_2": (114, 60, 144, 90),
+    "tube_3": (178, 60, 208, 90),
+    "tube_4": (241, 60, 271, 90),
+    "tube_5": (308, 60, 338, 90),
+    "tube_6": (375, 60, 405, 90),
+    "tube_7": (440, 60, 470, 90),
+    "tube_8": (506, 60, 536, 90)
 }
+CROP_Y1 = 345
+CROP_Y2 = 455
+CROP_X1 = 320
+CROP_X2 = 870
 # regions = {
 #     "tube_1": (33, 26, 48, 52),
 #     "tube_2": (66, 26, 84, 50),
@@ -515,7 +519,7 @@ def capture_and_save():
 
             # Always capture and process the image, regardless of whether a program is triggered
             image = capture_image_from_camera()
-            image = image[320:430, 320:870]
+            image = image[CROP_Y1:CROP_Y2, CROP_X1:CROP_X2]
             if image is None:
                 continue
             
