@@ -210,14 +210,13 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
         # Construct the raspistill command
         command = [
             'raspistill',
-            '-o', output_path,
-            '-ex', 'night',
+            '-o', output_path,            
             '-w', '1280',
             '-h', '960',
             '-q', '100',
             '-t', '1000',
             '-hf','-vf',
-            '-ss','12000',
+            '-ss','14000',
               '-awb','-auto'  # 2 seconds delay before capture
         ]
 
