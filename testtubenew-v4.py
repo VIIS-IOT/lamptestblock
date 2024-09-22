@@ -208,7 +208,7 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-o', output_path,            
             '-w', '1280',
             '-h', '960',
-            '-q', '85',
+            '-q', '100',
             '-t', '1000',
             '-hf','-vf',
             '-ss','14000',
