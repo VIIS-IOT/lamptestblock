@@ -40,7 +40,7 @@ elapsed_time = 0
 
 COMPARATOR = 1.4
 ORANGE_OFFSET = 20
-
+VALID_PIXEL_THRESHOLD = 100  # Minimum number of valid pixels required
 # Directory to save images
 image_dir = '/home/lamp/testtubenew/Test_Image'
 
@@ -103,21 +103,7 @@ CROP_X1 = 290
 CROP_X2 = 840
 
 
-# Function to convert hue to pH
-def hue_to_ph(hue):
-    if 45 <= hue < 75:
-        return 6.0 + (hue - 45) * (0.6 / 30)  # Interpolating within the yellow range
-    elif 30 <= hue < 45:
-        return 6.7 + (hue - 30) * (0.4 / 15)  # Interpolating within the orange range
-    elif (0 <= hue < 30) or (330 <= hue < 360):
-        if hue < 30:
-            return 7.2 + (hue - 0) * (0.4 / 30)  # Interpolating within the red range (low end)
-        else:
-            return 7.2 + (hue - 330) * (0.4 / 30)  # Interpolating within the red range (high end)
-    elif 300 <= hue < 330:
-        return 7.7 + (hue - 300) * (0.3 / 30)  # Interpolating within the pink/magenta range
-    else:
-        return None  # If the hue doesn't fall within any expected range, return None
+
 
 # Initialize the Kalman filter for 8 test tubes
 kf = [KalmanFilter(initial_state_mean=0, n_dim_obs=1, transition_matrices=1, observation_matrices=1, initial_state_covariance=1,transition_covariance=1e-3,observation_covariance=1e-1) for _ in range(8)]
@@ -127,12 +113,12 @@ state_covariances = [np.array([[1]]) for _ in range(8)]
 def detect_test_tube(image):
     results = {}
     global state_means, state_covariances
-    valid_pixel_threshold = 20  # Minimum number of valid pixels required
-    # hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    # hue_channel = hsv_image[:, :, 0]  # Ensure hue value is not divided by 2
+    
+   
     for i, (tube, (x1, y1, x2, y2)) in enumerate(regions.items()):
         sub_image = image[y1:y2, x1:x2]   
-        hsv_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2HSV)
+        blur_sub_image = cv2.GaussianBlur(sub_image, (3, 3), 0)
+        hsv_image = cv2.cvtColor(blur_sub_image, cv2.COLOR_BGR2HSV)
         hue_channel = hsv_image[:, :, 0]  # Ensure hue value is not divided by 2            
 
         # Define the bounds
@@ -151,7 +137,7 @@ def detect_test_tube(image):
         masked_hue = np.ma.masked_array(hue_channel, mask_hue == 0)
         # Filter out noise: Only proceed if there are enough valid pixels
         valid_pixel_count = np.ma.count(masked_hue)
-        if valid_pixel_count < valid_pixel_threshold:
+        if valid_pixel_count < VALID_PIXEL_THRESHOLD:
             mean_scaled_hue = None
         else:
         #     # Debugging: Print out the masked hue values
@@ -177,16 +163,24 @@ def detect_test_tube(image):
 
             # Calculate mean of scaled hue values
             mean_scaled_hue = scaled_hue.mean()
+            
+             # Apply Kalman filter to the hue value
+            if mean_scaled_hue is not None:
+                state_means[i], state_covariances[i] = kf[i].filter_update(
+                    state_means[i],
+                    state_covariances[i],
+                    mean_scaled_hue
+                )
+                hue = state_means[i][0]
+            else:
+                hue = None
+
             if mean_scaled_hue < 110 and mean_scaled_hue > 95:
                 mean_scaled_hue = mean_scaled_hue - 20
 
             # mean_scaled_hue = masked_hue.mean()
             print(f"Mean hue values for {tube}: {mean_scaled_hue}")
         
-        
-
-        ph = hue_to_ph(mean_scaled_hue) if mean_scaled_hue is not None else None
-
         # Draw rectangle and text on the image
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 1)
         if mean_scaled_hue is not None:
@@ -196,7 +190,7 @@ def detect_test_tube(image):
             cv2.putText(image, "H: ", (x1-5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
             
 
-        results[tube] = {"hue": mean_scaled_hue, "ph": ph}
+        results[tube] = {"hue": mean_scaled_hue}
 
     return results
 
@@ -212,7 +206,8 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-t', '1000',
             '-hf','-vf',
             '-ss','14000',
-            '-awb','auto' # 2 seconds delay before capture
+            '-awb','auto',
+            '-ISO','400' # 2 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
@@ -737,11 +732,16 @@ def plot_graph(columns=2):
 
     
 def handle_temperature(action, value=None):
+    global serial_lock
+
     if action == 'get':
-        ser.write(b'get_data\n')
-        line = ser.readline().decode('utf-8').strip()
+        # Use the lock for serial communication
+        with serial_lock:
+            ser.write(b'get_data\n')
+            line = ser.readline().decode('utf-8').strip()
+
         if "Temperature" in line:
-            # Extract data using string manipulation
+            # Extract data using string manipulation outside the lock
             try:
                 data_list = line.split(':')  # Split on ':' delimiter
                 temperature = float(data_list[1].split()[0])  # Extract temperature
@@ -753,23 +753,29 @@ def handle_temperature(action, value=None):
                 return None, None, None
         else:
             return None, None, None
-    elif action == 'set' and value is not None:
-        # Get the current temperature
-        temperature, _, _ = handle_temperature('get')
-        
-        if temperature is not None and temperature < 30:
-            # If the temperature is below 30 degrees, send the 'trigger' command
-            ser.write(b'trigger\n')
-            response_trigger = ser.readline().decode('utf-8').strip()
-            print(f"Trigger response: {response_trigger}")
 
-        # Set the new setpoint
-        command = f'setpoint {value}\n'
-        ser.write(command.encode())
-        response_setpoint = ser.readline().decode('utf-8').strip()
+    elif action == 'set' and value is not None:
+        # Get the current temperature before locking the serial communication for 'set'
+        temperature, _, _ = handle_temperature('get')
+
+        if temperature is not None and temperature < 30:
+            # Use the lock for the serial 'trigger' command
+            with serial_lock:
+                ser.write(b'trigger\n')
+                response_trigger = ser.readline().decode('utf-8').strip()
+                print(f"Trigger response: {response_trigger}")
+
+        # Use the lock for setting the new setpoint
+        with serial_lock:
+            command = f'setpoint {value}\n'
+            ser.write(command.encode())
+            response_setpoint = ser.readline().decode('utf-8').strip()
+
         return response_setpoint
+
     else:
         return None, None, None
+
 
 
 app = Flask(__name__)
@@ -802,7 +808,7 @@ def resume():
 
 @app.route('/reset')
 def reset():
-    global program_trigger, program_result, start_time, selected_process_time, selected_program, selected_t1
+    global program_trigger, program_result, start_time, selected_process_time, selected_program, selected_t1, elapsed_time
     
     stop_capture_thread()
     # start_capture_thread()
@@ -811,7 +817,7 @@ def reset():
     
     selected_t1 = None
     selected_process_time = None
-    
+    elapsed_time = 0
     start_time = 0
     program_result = {
                         'total_result': [],
@@ -1040,7 +1046,59 @@ def fetch_all_data():
 
     return jsonify(response_data)
 
+@app.route('/setup_wifi', methods=['POST'])
+def setup_wifi():
+    try:
+        data = request.get_json()
+        ssid_new = data['ssid']
+        password_new = data['password']
 
+        # Tạo nội dung cho Wi-Fi cũ (ưu tiên thấp hơn)
+        old_network_conf = """
+        network={
+            ssid="AmphaOnco-VP"
+            psk="Amphaonco@1234"
+            priority=1  # Độ ưu tiên thấp hơn
+        }
+        """
+
+        # Tạo nội dung cho Wi-Fi mới (ưu tiên cao hơn)
+        new_network_conf = f"""
+        network={{
+            ssid="{ssid_new}"
+            psk="{password_new}"
+            priority=2  # Độ ưu tiên cao hơn
+        }}
+        """
+
+        # Ghi đè file wpa_supplicant.conf với cả Wi-Fi cũ và mới
+        with open('/etc/wpa_supplicant/wpa_supplicant.conf', 'w') as file:
+            file.write("country=VN\n")
+            file.write("ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\n")
+            file.write("update_config=1\n\n")
+            file.write(new_network_conf)
+            file.write(old_network_conf)
+
+        # Khởi động lại dịch vụ mạng để áp dụng thay đổi
+        subprocess.run(['sudo', 'systemctl', 'restart', 'dhcpcd'], check=True)
+
+        # Đợi một chút để hệ thống thử kết nối
+        time.sleep(10)
+
+        # Kiểm tra SSID hiện tại mà máy đang kết nối
+        current_ssid_result = subprocess.run(['iwgetid', '--raw'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        current_ssid = current_ssid_result.stdout.decode().strip()
+
+        if current_ssid == ssid_new:
+            # Nếu kết nối thành công với Wi-Fi mới
+            return jsonify({'status': 'success', 'message': 'Connected to new Wi-Fi', 'connected_ssid': current_ssid})
+        else:
+            # Nếu không kết nối được Wi-Fi mới, vẫn dùng Wi-Fi cũ
+            return jsonify({'status': 'error', 'message': 'Failed to connect to new Wi-Fi, using old Wi-Fi', 'connected_ssid': current_ssid})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+        
 if __name__ == '__main__':
     handle_temperature('set', 25)
     

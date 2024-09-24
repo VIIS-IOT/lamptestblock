@@ -182,7 +182,8 @@
         } */
         table {
             width: 100%;
-            background: #f0f0f0; /* Light grey background */
+            background: #f0f0f0;
+            /* Light grey background */
             border-radius: 12px;
             box-shadow: 5px 5px 10px var(--shadow), -5px -5px 10px var(--light-shadow);
             border-collapse: collapse;
@@ -264,12 +265,13 @@
             <div class="container-fluid">
                 <div class="row align-items-center">
                     <!-- Nhiệt độ hiện tại -->
-                    <div class="col-12 col-md-6 input-item">
+                    <div class="col-12 col-md-12 input-item" style="text-align: center;">
                         <p style="font-weight: bold;">Nhiệt độ hiện tại: <span id="temp_value">-</span> °C</p>
                     </div>
 
+
                     <!-- Cài đặt giá trị mới -->
-                    <div class="col-12 col-md-6 input-item d-flex align-items-center">
+                    <!-- <div class="col-12 col-md-6 input-item d-flex align-items-center">
                         <label for="setTemperature" class="input-label" style="flex: 0 0 48%;">Cài giá trị mới:</label>
                         <div class="input-group" style="flex: 1;">
                             <input type="number" id="setTemperature" class="form-control" min="0" step="1" value="25"
@@ -278,7 +280,7 @@
                                 <button class="btn btn-secondary" onclick="setTemperature()">Cập nhật</button>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>
@@ -307,7 +309,7 @@
                     <label for="temperature" class="input-group-text neumorphism-label"
                         style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Cài nhiệt độ
                         (C):</label>
-                    <input type="number" id="temperature" class="form-control" value="25"
+                    <input type="number" id="temperature" class="form-control" value="65"
                         style="flex: 1; max-width: 52%;">
                 </div>
 
@@ -316,7 +318,7 @@
                     <label for="checkTime" class="input-group-text neumorphism-label"
                         style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Cài T1
                         (s):</label>
-                    <input type="number" id="checkTime" class="form-control" value="900"
+                    <input type="number" id="checkTime" class="form-control" value="60"
                         style="flex: 1; max-width: 52%;">
                 </div>
 
@@ -330,7 +332,7 @@
                 </div>
 
 
-                <button class="btn btn-primary" onclick="runProgram()">Chạy chương trình</button>
+                <!-- <button class="btn btn-primary" onclick="runProgram()">Chạy chương trình</button> -->
             </div>
         </div>
 
@@ -340,10 +342,12 @@
                 <h4 style="text-align: center;">ẢNH CHỤP MỚI NHẤT</h4>
                 <img id="latestImage" src="" alt="Latest Image" class="img-fluid" />
             </div> -->
+            <!-- Result Display -->
             <div class="col-12 col-md-3 d-flex flex-column align-items-center justify-content-center w-100"
                 style="margin-bottom: 2rem;">
                 <h4 style="text-align: center;">ẢNH CHỤP MỚI NHẤT</h4>
-                <img id="latestImage" src="" alt="Latest Image" class="img-fluid" />
+                <img id="latestImage" src="./empty.jpg" alt="Latest Image" />
+                <img id="hiddenImage" src="" alt="Hidden Image" style="display: none;" />
             </div>
 
 
@@ -381,330 +385,520 @@
             </div>
         </div>
 
+        <div class="section-divider">
+            <h4 class="text-center">Thiết lập WiFi mới</h4>
+            <form id="wifiForm">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="ssid" class="form-label">SSID:</label>
+                        <input type="text" class="form-control" id="ssid" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">Password:</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Thiết lập WiFi</button>
+            </form>
+            <div id="wifiStatus" class="mt-3"></div>
+        </div>
+
         <script defer src="/static/js/bootstrap.bundle.min.js"></script>
         <script>
-            // Your JavaScript functions will be here
-        </script>
-</body>
-
-</html>
-
-<script>
-    document.addEventListener('DOMContentLoaded', (event) => {
-        // Fetch status when the page loads
-        fetchStatus();
-    });
-    let systemStatus = 'Đang chờ lệnh';  // Initialize system status globally
-    function clearTableData() {
-        const tableBody = document.getElementById('resultTable').querySelector('tbody');
-        tableBody.innerHTML = ''; // Clear all rows in the table body
-        document.getElementById('totalResultText').textContent = 'Chờ lệnh...'; // Reset the result text
-    }
-
-    function updateStatus(message) {
-        const statusElement = document.getElementById('status');
-        statusElement.innerText = `Trạng thái hiện tại: ${systemStatus} \n ${message}`;
-    }
-
-    function runProgram() {
-        clearTableData();  // Clear the table before starting a new program
-        const program = document.getElementById('programSelect').value;
-        const temperature = document.getElementById('temperature').value;
-        const checkTime = document.getElementById('checkTime').value;
-        const processTime = document.getElementById('processTime').value;
-
-        fetch('/run_program', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                program: program,
-                temperature: temperature,
-                checkTime: checkTime,
-                processTime: processTime
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Set program parameters, but keep the current system status
-                    updateStatus(`Chương trình ${data.program_name} đã được thiết lập với:
-                        T1: ${checkTime} giây
-                        Thời gian chạy: ${processTime} giây
-                        Nhiệt độ: ${temperature}°C`);
-
-                } else {
-                    updateStatus(`Error: ${data.message}`);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                updateStatus('Failed to set program parameters.');
+            document.addEventListener('DOMContentLoaded', (event) => {
+                // Fetch status when the page loads
+                fetchStatus();
             });
-    }
-
-
-    function showMessage(message) {
-        alert(message);
-    }
-
-    function updateState(newState) {
-        // Update the status on the page
-        document.getElementById('status').innerText = `Trạng thái hiện tại: ${newState}`;
-
-        // Save the status to the backend
-        fetch('/status', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ status: newState })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status !== 'success') {
-                    console.error('Error updating status:', data);
-                }
-            })
-            .catch(error => console.error('Error updating status:', error));
-    }
-
-    function fetchStatus() {
-        fetch('/status')
-            .then(response => response.json())
-            .then(data => {
-                const statusElement = document.getElementById('status');
-
-                // Map program numbers to their names
-                const programNames = {
-                    "1": "Làm quen quy trình",
-                    "2": "Chạy mẫu thử"
-                };
-
-                // Get the program name based on the program number
-                const programName = programNames[data.program];
-
-                if (data.program !== null) {
-                    statusElement.innerText = `
-                            Trạng thái: ${data.status}
-                            Chương trình ${data.program}: ${programName}
-                            Thời gian T1: ${data.check_time_t1} giây
-                            Thời gian chạy: ${data.process_time} giây
-                            Nhiệt độ: ${data.temperature}°C
-                        `;
-                } else {
-                    statusElement.innerText = `Trạng thái: ${data.status}`;
-                }
-            })
-            .catch(error => console.error('Error fetching status:', error));
-    }
-
-
-
-    function changeState(newState, actionFunc) {
-        updateState(newState);
-        actionFunc().then(response => {
-            if (response.ok) {
-                showMessage("SYSTEM IS " + newState);
-            } else {
-                showMessage("SYSTEM ERROR: " + newState);
+            let systemStatus = 'Đang chờ lệnh';  // Initialize system status globally
+            function clearTableData() {
+                console.log("start clear table data")
+                const tableBody = document.getElementById('resultTable').querySelector('tbody');
+                tableBody.innerHTML = ''; // Clear all rows in the table body
+                document.getElementById('totalResultText').textContent = 'Chờ lệnh...'; // Reset the result text
+                console.log("done clear table data")
             }
-        }).catch(error => {
-            showMessage("SYSTEM ERROR: " + error.message);
-        });
-    }
 
-
-    let isSettingTemperature = false;
-
-    // Unified fetch function that replaces all individual fetches
-    function fetchAllData() {
-        fetch('/fetch_all_data')
-            .then(response => response.json())
-            .then(data => {
-                // Update temperature data
-                const tempElement = document.getElementById('temp_value');
-                const setpointElement = document.getElementById('setpoint_value');
-                const outputElement = document.getElementById('output_value');
-
-                // Xử lý tempElement
-                if (tempElement) {
-                    if (data.temperature && typeof data.temperature.temperature === 'number') {
-                        tempElement.textContent = data.temperature.temperature.toFixed(1);
-                        console.log("tempElement", tempElement);
-                    } else {
-                        tempElement.textContent = 'N/A';
-                    }
-                }
-
-                // Xử lý setpointElement
-                if (setpointElement) {
-                    if (data.temperature && typeof data.temperature.setpoint === 'number') {
-                        setpointElement.textContent = data.temperature.setpoint.toFixed(1);
-                    } else {
-                        setpointElement.textContent = 'N/A';
-                    }
-                }
-
-                // Xử lý outputElement
-                if (outputElement) {
-                    if (data.temperature && typeof data.temperature.output === 'number') {
-                        outputElement.textContent = data.temperature.output.toFixed(1);
-                    } else {
-                        outputElement.textContent = 'N/A';
-                    }
-                }
-
-                // Update program result
-                const totalResultTextElement = document.getElementById('totalResultText');
-                const resultTableBody = document.getElementById('resultTable') ? document.getElementById('resultTable').querySelector('tbody') : null;
-
-                if (totalResultTextElement && resultTableBody && data.program_result && data.program_result.table_data) {
-                    totalResultTextElement.textContent = data.program_result.total_result || 'Waiting for result...';
-
-                    // Clear the table body before updating
-                    resultTableBody.innerHTML = '';
-
-                    // Populate the table with the updated data
-                    data.program_result.table_data.forEach(row => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                        <td>${row.Tube}</td>
-                        <td>${typeof row['Hue Value'] === 'number' ? row['Hue Value'].toFixed(2) : 'N/A'}</td>
-                        <td>${typeof row['C Value'] === 'number' ? row['C Value'].toFixed(2) : 'N/A'}</td>
-                        <td>${row.Result}</td>
-                    `;
-                        resultTableBody.appendChild(tr);
-                    });
-                }
-
-                // Update elapsed time
-                const elapsedTimeElement = document.getElementById('elapsed_time');
-                if (elapsedTimeElement && data.elapsed_time !== undefined) {
-                    elapsedTimeElement.textContent = `${Math.floor(data.elapsed_time)} s`;
-                }
-
-                // Update image
-                const latestImageElement = document.getElementById('latestImage');
-                if (latestImageElement && data.image_url) {
-                    latestImageElement.src = data.image_url;
-                }
-
-                // Update plot data using Plotly
+            function clearGraphData() {
+                console.log("clearGraphData")
                 const graphDiv = document.getElementById('graph');
-                if (graphDiv && data.plot_data && data.plot_data.data && data.plot_data.layout) {
-                    Plotly.react(graphDiv, data.plot_data.data, data.plot_data.layout);
+                if (graphDiv) {
+                    Plotly.purge(graphDiv); // Clear the graph data
                 }
-            })
-            .catch(error => console.error('Error fetching all data:', error));
-    }
+                console.log("done clearGraphData")
+            }
 
-
-
-
-    function startCapture() {
-        clearTableData();  // Clear the table before starting a new program
-        fetch('/start')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Đang chạy';
-                updateStatus('Thiết bị đã hoạt động.');
-            })
-            .catch(error => {
-                updateStatus('Không thể khởi động hệ thống.');
-                console.error('Lỗi:', error);
-            });
-    }
-
-    function pauseCapture() {
-        fetch('/pause')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Tạm dừng';
-                updateStatus('Thiết bị tạm dừng.');
-            })
-            .catch(error => {
-                updateStatus('Không thể tạm dừng hệ thống.');
-                console.error('Lỗi:', error);
-            });
-    }
-
-    function resumeCapture() {
-        fetch('/resume')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Tiếp tục';
-                updateStatus('Thiết bị tiếp tục chạy.');
-            })
-            .catch(error => {
-                updateStatus('Không thể tiếp tục hệ thống.');
-                console.error('Lỗi:', error);
-            });
-    }
-
-    function resetCapture() {
-        clearTableData();  // Clear the table before starting a new program
-        fetch('/reset')
-            .then(response => response.json())
-            .then(data => {
-                systemStatus = 'Reset';
-                updateStatus('System reset.');
-            })
-            .catch(error => {
-                updateStatus('Failed to reset system.');
-                console.error('Error:', error);
-            });
-    }
-
-    function downloadCSV() {
-        window.location.href = '/download_CSV';
-    }
-
-    function downloadImages() {
-        window.location.href = '/download';
-    }
-
-
-
-    function setTemperature() {
-        const temperature = document.getElementById('setTemperature').value;
-        isSettingTemperature = true;
-
-        fetch('/set_temperature', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'value=' + temperature
-        })
-            .then(response => response.json())
-            .then(data => {
-                isSettingTemperature = false;
-                if (data.response === 'OK') {
-                    alert('Temperature set successfully');
-                } else {
-                    alert('Failed to set temperature');
+            function resetElapsedTime() {
+                const elapsedTimeElement = document.getElementById('elapsed_time');
+                console.log("restart elapsedTimeElement", elapsedTimeElement)
+                if (elapsedTimeElement) {
+                    elapsedTimeElement.textContent = '0 s'; // Reset elapsed time to 0
                 }
-            })
-            .catch(error => {
-                isSettingTemperature = false;
-                console.error('Error setting temperature:', error);
-                alert('Error setting temperature');
+                console.log("done restart elapsedTimeElement", elapsedTimeElement)
+            }
+
+            function updateStatus(message) {
+                const statusElement = document.getElementById('status');
+                statusElement.innerText = `Trạng thái hiện tại: ${systemStatus} \n ${message}`;
+            }
+
+            function runProgram() {
+                console.log("Start to run program")
+                clearTableData();  // Clear the table before starting a new program
+                const program = document.getElementById('programSelect').value;
+                const temperature = document.getElementById('temperature').value;
+                const checkTime = document.getElementById('checkTime').value;
+                const processTime = document.getElementById('processTime').value;
+                console.log("Start to fetch run_program")
+                fetch('/run_program', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        program: program,
+                        temperature: temperature,
+                        checkTime: checkTime,
+                        processTime: processTime
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("fetch done")
+                        if (data.status === 'success') {
+                            console.log("run_program success")
+                            // Set program parameters, but keep the current system status
+                            updateStatus(`Chương trình ${data.program_name} đã được thiết lập với:
+                                T1: ${checkTime} giây
+                                Thời gian chạy: ${processTime} giây
+                                Nhiệt độ: ${temperature}°C`);
+
+                        } else {
+                            console.log("run_program error", data.message)
+                            updateStatus(`Error: ${data.message}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        updateStatus('Failed to set program parameters.');
+                    });
+            }
+
+
+            function showMessage(message) {
+                // alert(message);
+                console.log(message)
+            }
+
+            function updateState(newState) {
+                // Update the status on the page
+                document.getElementById('status').innerText = `Trạng thái hiện tại: ${newState}`;
+
+                // Save the status to the backend
+                fetch('/status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newState })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status !== 'success') {
+                            console.error('Error updating status:', data);
+                        }
+                    })
+                    .catch(error => console.error('Error updating status:', error));
+            }
+
+            function fetchStatus() {
+                fetch('/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        const statusElement = document.getElementById('status');
+
+                        // Map program numbers to their names
+                        const programNames = {
+                            "1": "Làm quen quy trình",
+                            "2": "Chạy mẫu thử"
+                        };
+
+                        // Get the program name based on the program number
+                        const programName = programNames[data.program];
+
+                        if (data.program !== null) {
+                            statusElement.innerText = `
+                                    Trạng thái: ${data.status}
+                                    Chương trình ${data.program}: ${programName}
+                                    Thời gian T1: ${data.check_time_t1} giây
+                                    Thời gian chạy: ${data.process_time} giây
+                                    Nhiệt độ: ${data.temperature}°C
+                                `;
+                        } else {
+                            statusElement.innerText = `Trạng thái: ${data.status}`;
+                        }
+                    })
+                    .catch(error => console.error('Error fetching status:', error));
+            }
+
+
+
+            async function changeState(newState, actionFunc) {
+                updateState(newState);
+                try {
+                    const response = await actionFunc();
+                    console.log("actionFunc in changeState response: ", response);
+                    if (response) {
+                        showMessage("SYSTEM IS " + newState);
+                    } else {
+                        showMessage("SYSTEM ERROR: " + newState);
+                    }
+                } catch (error) {
+                    showMessage("SYSTEM ERROR: " + error.message);
+                }
+            }
+
+
+            let isSettingTemperature = false;
+
+            // Unified fetch function that replaces all individual fetches
+            // function fetchAllData() {
+            //     fetch('/fetch_all_data')
+            //         .then(response => response.json())
+            //         .then(data => {
+            //             // Update temperature data
+            //             const tempElement = document.getElementById('temp_value');
+            //             const setpointElement = document.getElementById('setpoint_value');
+            //             const outputElement = document.getElementById('output_value');
+
+            //             // Xử lý tempElement
+            //             if (tempElement) {
+            //                 if (data.temperature && typeof data.temperature.temperature === 'number') {
+            //                     tempElement.textContent = data.temperature.temperature.toFixed(1);
+            //                     console.log("tempElement", tempElement);
+            //                 } else {
+            //                     tempElement.textContent = 'N/A';
+            //                 }
+            //             }
+
+            //             // Xử lý setpointElement
+            //             if (setpointElement) {
+            //                 if (data.temperature && typeof data.temperature.setpoint === 'number') {
+            //                     setpointElement.textContent = data.temperature.setpoint.toFixed(1);
+            //                 } else {
+            //                     setpointElement.textContent = 'N/A';
+            //                 }
+            //             }
+
+            //             // Xử lý outputElement
+            //             if (outputElement) {
+            //                 if (data.temperature && typeof data.temperature.output === 'number') {
+            //                     outputElement.textContent = data.temperature.output.toFixed(1);
+            //                 } else {
+            //                     outputElement.textContent = 'N/A';
+            //                 }
+            //             }
+
+            //             // Update program result
+            //             const totalResultTextElement = document.getElementById('totalResultText');
+            //             const resultTableBody = document.getElementById('resultTable') ? document.getElementById('resultTable').querySelector('tbody') : null;
+
+            //             if (totalResultTextElement && resultTableBody && data.program_result && data.program_result.table_data) {
+            //                 totalResultTextElement.textContent = data.program_result.total_result || 'Waiting for result...';
+
+            //                 // Clear the table body before updating
+            //                 resultTableBody.innerHTML = '';
+
+            //                 // Populate the table with the updated data
+            //                 data.program_result.table_data.forEach(row => {
+            //                     const tr = document.createElement('tr');
+            //                     tr.innerHTML = `
+            //                     <td>${row.Tube}</td>
+            //                     <td>${typeof row['Hue Value'] === 'number' ? row['Hue Value'].toFixed(2) : 'N/A'}</td>
+            //                     <td>${typeof row['C Value'] === 'number' ? row['C Value'].toFixed(2) : 'N/A'}</td>
+            //                     <td>${row.Result}</td>
+            //                 `;
+            //                     resultTableBody.appendChild(tr);
+            //                 });
+            //             }
+
+            //             // Update elapsed time
+            //             const elapsedTimeElement = document.getElementById('elapsed_time');
+            //             if (elapsedTimeElement && data.elapsed_time !== undefined) {
+            //                 elapsedTimeElement.textContent = `${Math.floor(data.elapsed_time)} s`;
+            //             }
+
+            //             // Update image
+            //             const latestImageElement = document.getElementById('latestImage');
+            //             if (latestImageElement && data.image_url) {
+            //                 latestImageElement.src = data.image_url;
+            //             }
+
+            //             // Update plot data using Plotly
+            //             const graphDiv = document.getElementById('graph');
+            //             if (graphDiv && data.plot_data && data.plot_data.data && data.plot_data.layout) {
+            //                 Plotly.react(graphDiv, data.plot_data.data, data.plot_data.layout);
+            //             }
+            //         })
+            //         .catch(error => console.error('Error fetching all data:', error));
+            // }
+
+
+            function fetchAllData() {
+                fetch('/fetch_all_data')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update temperature data
+                        const tempElement = document.getElementById('temp_value');
+                        const setpointElement = document.getElementById('setpoint_value');
+                        const outputElement = document.getElementById('output_value');
+
+                        // Xử lý tempElement
+                        if (tempElement) {
+                            if (data.temperature && typeof data.temperature.temperature === 'number') {
+                                tempElement.textContent = data.temperature.temperature.toFixed(1);
+                                console.log("tempElement", tempElement);
+                            } else {
+                                tempElement.textContent = 'N/A';
+                            }
+                        }
+
+                        // Xử lý setpointElement
+                        if (setpointElement) {
+                            if (data.temperature && typeof data.temperature.setpoint === 'number') {
+                                setpointElement.textContent = data.temperature.setpoint.toFixed(1);
+                            } else {
+                                setpointElement.textContent = 'N/A';
+                            }
+                        }
+
+                        // Xử lý outputElement
+                        if (outputElement) {
+                            if (data.temperature && typeof data.temperature.output === 'number') {
+                                outputElement.textContent = data.temperature.output.toFixed(1);
+                            } else {
+                                outputElement.textContent = 'N/A';
+                            }
+                        }
+
+                        // Update program result
+                        const totalResultTextElement = document.getElementById('totalResultText');
+                        const resultTableBody = document.getElementById('resultTable') ? document.getElementById('resultTable').querySelector('tbody') : null;
+
+                        if (totalResultTextElement && resultTableBody && data.program_result && data.program_result.table_data) {
+                            totalResultTextElement.textContent = data.program_result.total_result || 'Waiting for result...';
+
+                            // Clear the table body before updating
+                            resultTableBody.innerHTML = '';
+
+                            // Populate the table with the updated data
+                            data.program_result.table_data.forEach(row => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                            <td>${row.Tube}</td>
+                            <td>${typeof row['Hue Value'] === 'number' ? row['Hue Value'].toFixed(2) : 'N/A'}</td>
+                            <td>${typeof row['C Value'] === 'number' ? row['C Value'].toFixed(2) : 'N/A'}</td>
+                            <td>${row.Result}</td>
+                        `;
+                                resultTableBody.appendChild(tr);
+                            });
+                        }
+
+                        // Update elapsed time
+                        const elapsedTimeElement = document.getElementById('elapsed_time');
+                        if (elapsedTimeElement && data.elapsed_time !== undefined) {
+                            elapsedTimeElement.textContent = `${Math.floor(data.elapsed_time)} s`;
+                        }
+
+                        // Update image
+                        const latestImageElement = document.getElementById('latestImage');
+                        const hiddenImageElement = document.getElementById('hiddenImage');
+                        if (hiddenImageElement && data.image_url) {
+                            hiddenImageElement.src = data.image_url;
+                            hiddenImageElement.onload = () => {
+                                latestImageElement.src = data.image_url;
+                            };
+                        }
+                        // // Update image
+                        // const latestImageElement = document.getElementById('latestImage');
+                        // if (latestImageElement && data.image_url) {
+                        //     latestImageElement.src = data.image_url;
+                        // }
+
+                        // Update plot data using Plotly
+                        const graphDiv = document.getElementById('graph');
+                        if (graphDiv && data.plot_data && data.plot_data.data && data.plot_data.layout) {
+                            Plotly.react(graphDiv, data.plot_data.data, data.plot_data.layout);
+                        }
+                    })
+                    .catch(error => console.error('Error fetching all data:', error));
+            }
+
+
+
+
+            // function startCapture() {
+            //     clearTableData();  // Clear the table before starting a new program
+            //     fetch('/start')
+            //         .then(response => response.json())
+            //         .then(data => {
+            //             systemStatus = 'Đang chạy';
+            //             updateStatus('Thiết bị đã hoạt động.');
+            //         })
+            //         .catch(error => {
+            //             updateStatus('Không thể khởi động hệ thống.');
+            //             console.error('Lỗi:', error);
+            //         });
+            //     // runProgram(); // chạy chương trình ngay sau khi nhấn bắt đầu
+            // }
+
+            async function startCapture() {
+                clearTableData();  // Clear the table before starting a new program
+                try {
+                    let response = await fetch('/start');
+                    let data = await response.json();
+                    systemStatus = 'Đang chạy';
+                    updateStatus('Thiết bị đã hoạt động.');
+
+                    // Run the program after starting the capture
+                    await runProgram();
+
+                    // Start the interval to fetch data every 1 second
+                    setInterval(fetchAllData, 1000);
+
+                    return data;
+                } catch (error) {
+                    updateStatus('Không thể khởi động hệ thống.');
+                    console.error('Lỗi:', error);
+                }
+            }
+
+            function pauseCapture() {
+                fetch('/pause')
+                    .then(response => response.json())
+                    .then(data => {
+                        systemStatus = 'Tạm dừng';
+                        updateStatus('Thiết bị tạm dừng.');
+                    })
+                    .catch(error => {
+                        updateStatus('Không thể tạm dừng hệ thống.');
+                        console.error('Lỗi:', error);
+                    });
+            }
+
+            function resumeCapture() {
+                fetch('/resume')
+                    .then(response => response.json())
+                    .then(data => {
+                        systemStatus = 'Tiếp tục';
+                        updateStatus('Thiết bị tiếp tục chạy.');
+                    })
+                    .catch(error => {
+                        updateStatus('Không thể tiếp tục hệ thống.');
+                        console.error('Lỗi:', error);
+                    });
+            }
+
+            async function resetCapture() {
+                let data;
+                try {
+                    const response = await fetch('/reset');
+                    data = await response.json();
+                    systemStatus = 'Reset';
+                    updateStatus('System reset.');
+
+                } catch (error) {
+                    updateStatus('Failed to reset system.');
+                    console.error('Error:', error);
+                }
+                clearTableData();  // Clear the table before starting a new program
+                clearGraphData();  // Clear the graph data
+                resetElapsedTime(); // Reset elapsed time to 0
+                return data
+
+            }
+
+            function downloadCSV() {
+                window.location.href = '/download_CSV';
+            }
+
+            function downloadImages() {
+                window.location.href = '/download';
+            }
+
+
+
+            function setTemperature() {
+                const temperature = document.getElementById('setTemperature').value;
+                isSettingTemperature = true;
+
+                fetch('/set_temperature', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'value=' + temperature
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        isSettingTemperature = false;
+                        if (data.response === 'OK') {
+                            alert('Temperature set successfully');
+                        } else {
+                            alert('Failed to set temperature');
+                        }
+                    })
+                    .catch(error => {
+                        isSettingTemperature = false;
+                        console.error('Error setting temperature:', error);
+                        alert('Error setting temperature');
+                    });
+            }
+
+
+
+
+            setInterval(fetchAllData, 1000);
+
+            // Initial data fetch when the page loads
+            fetchAllData();
+
+            document.getElementById('wifiForm').addEventListener('submit', function (event) {
+                event.preventDefault();
+                const ssid = document.getElementById('ssid').value;
+                const password = document.getElementById('password').value;
+
+                fetch('/setup_wifi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ssid: ssid, password: password })
+                })
+                const wifiStatus = document.getElementById('wifiStatus');
+                // if (data.status === 'success') {
+                //     wifiStatus.innerHTML = '<div class="alert alert-success">WiFi đã được thiết lập thành công!</div>';
+                // } else {
+                //     wifiStatus.innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại: ' + data.message + '</div>';
+                // }
+                wifiStatus.innerHTML = '<div class="alert alert-success">Thiết bị đang được thiết lập wifi mới. Vui lòng đợi trong giây lát, sau đó thử kết nối lại vào mạng. Nếu không thể kết nối tới wifi mới, thiết bị sẽ kết nối vào wifi mặc định AmphaOnco-VP</div>';
+                // .then(response => response.json())
+                // .then(data => {
+                //     const wifiStatus = document.getElementById('wifiStatus');
+                //     // if (data.status === 'success') {
+                //     //     wifiStatus.innerHTML = '<div class="alert alert-success">WiFi đã được thiết lập thành công!</div>';
+                //     // } else {
+                //     //     wifiStatus.innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại: ' + data.message + '</div>';
+                //     // }
+                //     wifiStatus.innerHTML = '<div class="alert alert-success">Thiết bị đang được thiết lập wifi mới. Vui lòng đợi trong giây lát, sau đó thử kết nối lại vào mạng.</div>';
+
+                // })
+                // .catch(error => {
+                //     console.error('Error:', error);
+                //     document.getElementById('wifiStatus').innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại.</div>';
+                // });
             });
-    }
-
-
-
-
-    setInterval(fetchAllData, 1000);
-
-    // Initial data fetch when the page loads
-    fetchAllData();
-
-</script>
-<script defer src="/static/js/bootstrap.bundle.min.js"></script>
-
+        </script>
+        <script defer src="/static/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
