@@ -384,22 +384,24 @@
         </div>
 
 
-        <div class="section-divider"></div>
-        <h4 class="text-center">Thiết lập WiFi mới</h4>
-        <form id="wifiForm">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label for="ssid" class="form-label">SSID:</label>
-                    <input type="text" class="form-control" id="ssid" required>
+        <div class="section-divider">
+            <h4 class="text-center">Thiết lập WiFi mới</h4>
+            <form id="wifiForm">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="ssid" class="form-label">SSID:</label>
+                        <input type="text" class="form-control" id="ssid" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">Password:</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label for="password" class="form-label">Password:</label>
-                    <input type="password" class="form-control" id="password" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary">Thiết lập WiFi</button>
-        </form>
-        <div id="wifiStatus" class="mt-3"></div>
+                <button type="submit" class="btn btn-primary">Thiết lập WiFi</button>
+            </form>
+            <div id="wifiStatus" class="mt-3"></div>
+        </div>
+
     </div>
 
     <script defer src="/static/js/bootstrap.bundle.min.js"></script>
@@ -415,7 +417,7 @@
     let program_trigger = false;
     let elapsedTime = 0;  // Initialize elapsed time
     let elapsedTimeIntervalId;  // Declare a variable to store the elapsed time interval ID
-
+    let processTimeGlobal;
     document.addEventListener('DOMContentLoaded', (event) => {
         // Fetch status when the page loads
         fetchStatus();
@@ -486,7 +488,7 @@
         const temperature = document.getElementById('temperature').value;
         const checkTime = document.getElementById('checkTime').value;
         const processTime = document.getElementById('processTime').value;
-
+        processTimeGlobal = processTime
         fetch('/run_program', {
             method: 'POST',
             headers: {
@@ -568,6 +570,7 @@
                             Thời gian chạy: ${data.process_time} giây
                             Nhiệt độ: ${data.temperature}°C
                         `;
+
                 } else {
                     statusElement.innerText = `Trạng thái: ${data.status}`;
                 }
@@ -634,7 +637,7 @@
                 // Update program result
                 const totalResultTextElement = document.getElementById('totalResultText');
                 const resultTableBody = document.getElementById('resultTable') ? document.getElementById('resultTable').querySelector('tbody') : null;
-                if (totalResultTextElement && resultTableBody && data.program_result && data.program_result.table_data && program_trigger) {
+                if (totalResultTextElement && resultTableBody && data.program_result && data.program_result.table_data) {
                     totalResultTextElement.textContent = data.program_result.total_result || 'Waiting for result...';
 
                     // Clear the table body before updating
@@ -655,7 +658,7 @@
 
                 // Update elapsed time
                 if (!elapsedTimeIntervalId && data.program_trigger) {
-                    console.log("khởi động lại elapsedTimeIntervalId", elapsedTimeIntervalId)
+                    // console.log("khởi động lại elapsedTimeIntervalId", elapsedTimeIntervalId)
                     elapsedTime = Math.floor(data.elapsed_time)
                     // const elapsedTimeElement = document.getElementById('elapsed_time');
                     // if (elapsedTimeElement && data.elapsed_time !== undefined) {
@@ -667,8 +670,26 @@
                     }, 1000);  // Resume the elapsed time counter
 
                 }
+                // else if (!data.program_trigger) {
+                //     if (elapsedTimeIntervalId) {
+                //         clearInterval(elapsedTimeIntervalId);  // Pause the elapsed time counter
+                //         elapsedTimeIntervalId = null;
+                //         elapsedTime = 0;  // Reset elapsed time to 0
+                //     }
+                // }
                 else {
                     console.log("elapsedTimeIntervalId đã có", elapsedTimeIntervalId)
+                }
+                processTimeGlobal = data.process_time
+                console.log("elapsedTime", elapsedTime)
+                console.log("processTime", processTimeGlobal)
+                console.log("data.process_time", data.process_time)
+
+                if (elapsedTime >= processTimeGlobal) {
+                    clearInterval(elapsedTimeIntervalId);  // Pause the elapsed time counter
+                    elapsedTimeIntervalId = null;
+                    elapsedTime = processTimeGlobal;  // Reset elapsed time to 0
+                    updateElapsedTime()
                 }
 
 
@@ -681,7 +702,7 @@
                 // Update image
                 const latestImageElement = document.getElementById('latestImage');
                 const hiddenImageElement = document.getElementById('hiddenImage');
-                if (hiddenImageElement && data.image_url && program_trigger) {
+                if (hiddenImageElement && data.image_url) {
                     hiddenImageElement.src = data.image_url;
                     hiddenImageElement.onload = () => {
                         latestImageElement.src = data.image_url;
@@ -690,7 +711,7 @@
 
                 // Update plot data using Plotly
                 const graphDiv = document.getElementById('graph');
-                if (graphDiv && data.plot_data && data.plot_data.data && data.plot_data.layout && program_trigger) {
+                if (graphDiv && data.plot_data && data.plot_data.data && data.plot_data.layout) {
                     Plotly.react(graphDiv, data.plot_data.data, data.plot_data.layout);
                 }
             })
