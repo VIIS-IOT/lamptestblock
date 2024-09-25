@@ -202,12 +202,12 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-o', output_path,            
             '-w', '1280',
             '-h', '960',
-            '-q', '100',
+            '-q', '80',
             '-t', '1000',
             '-hf','-vf',
-            '-ss','14000',
+            '-ss','16000',
             '-awb','auto',
-            '-ISO','400' # 2 seconds delay before capture
+            '-ISO','600' # 2 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
@@ -520,7 +520,9 @@ def capture_and_save():
             df_hue.to_csv(hue_csv_file, index=False)
 
             latest_image_path = os.path.join(image_dir, f'test_tube_{timestamp.strftime("%Y%m%d_%H%M%S")}.jpg')
-            cv2.imwrite(latest_image_path, image)
+            # cv2.imwrite(latest_image_path, image)
+            cv2.imwrite(latest_image_path, image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+
             print(f"Saved image: {latest_image_path}")      
             
            
@@ -808,13 +810,13 @@ def resume():
 
 @app.route('/reset')
 def reset():
-    global program_trigger, program_result, start_time, selected_process_time, selected_program, selected_t1, elapsed_time
+    global program_status,program_trigger, program_result, start_time, selected_process_time, selected_program, selected_t1, elapsed_time
     
     stop_capture_thread()
     # start_capture_thread()
     program_trigger = False
     selected_program = None
-    
+    program_status = None
     selected_t1 = None
     selected_process_time = None
     elapsed_time = 0
@@ -1010,6 +1012,11 @@ def get_elapsed_time():
     global elapsed_time
     return jsonify({'elapsed_time': elapsed_time})
 
+@app.route('/program_trigger', methods=['GET'])
+def get_program_trigger():
+    global program_trigger
+    return jsonify({'program_trigger': program_trigger})
+
 @app.route('/fetch_all_data', methods=['GET'])
 def fetch_all_data():
     # Fetch temperature data
@@ -1020,6 +1027,9 @@ def fetch_all_data():
     
     # Fetch elapsed time
     elapsed_time = get_elapsed_time()
+
+    # Fetch program_trigger
+    program_trigger = get_program_trigger()
 
     # Fetch the latest image URL (you might need to adjust this depending on how the image is served)
     image_url = '/latest_image?' + str(time.time())  # Add timestamp to prevent caching
@@ -1040,6 +1050,7 @@ def fetch_all_data():
         },
         'program_result': program_result.json,
         'elapsed_time': elapsed_time.json['elapsed_time'],
+        'program_trigger': program_trigger.json['program_trigger'],
         'image_url': image_url,
         'plot_data': plot_data
     }
@@ -1088,13 +1099,14 @@ def setup_wifi():
         # Kiểm tra SSID hiện tại mà máy đang kết nối
         current_ssid_result = subprocess.run(['iwgetid', '--raw'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         current_ssid = current_ssid_result.stdout.decode().strip()
-
-        if current_ssid == ssid_new:
-            # Nếu kết nối thành công với Wi-Fi mới
-            return jsonify({'status': 'success', 'message': 'Connected to new Wi-Fi', 'connected_ssid': current_ssid})
-        else:
-            # Nếu không kết nối được Wi-Fi mới, vẫn dùng Wi-Fi cũ
-            return jsonify({'status': 'error', 'message': 'Failed to connect to new Wi-Fi, using old Wi-Fi', 'connected_ssid': current_ssid})
+        # Khởi động lại dịch vụ mạng để áp dụng thay đổi
+        subprocess.run(['sudo', 'reboot'], check=True)
+        # if current_ssid == ssid_new:
+        #     # Nếu kết nối thành công với Wi-Fi mới
+        #     return jsonify({'status': 'success', 'message': 'Connected to new Wi-Fi', 'connected_ssid': current_ssid})
+        # else:
+        #     # Nếu không kết nối được Wi-Fi mới, vẫn dùng Wi-Fi cũ
+        #     return jsonify({'status': 'error', 'message': 'Failed to connect to new Wi-Fi, using old Wi-Fi', 'connected_ssid': current_ssid})
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
