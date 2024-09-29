@@ -37,10 +37,11 @@ program_result = None
 start_time = None
 program_status = None
 elapsed_time = 0
+last_five_hues_n = []  # Store the last 5 hues for Tube N
 
 COMPARATOR = 1.4
 ORANGE_OFFSET = 20
-VALID_PIXEL_THRESHOLD = 100  # Minimum number of valid pixels required
+VALID_PIXEL_THRESHOLD = 60  # Minimum number of valid pixels required
 # Directory to save images
 image_dir = '/home/lamp/testtubenew/Test_Image'
 
@@ -106,7 +107,6 @@ CROP_X2 = 840
 
 
 # Initialize the Kalman filter for 8 test tubes
-#kf = [KalmanFilter(initial_state_mean=0, n_dim_obs=1, transition_matrices=1, observation_matrices=1, initial_state_covariance=1,transition_covariance=1e-3,observation_covariance=1e-1) for _ in range(8)]
 # Adjust the Kalman filter parameters
 kf = [KalmanFilter(initial_state_mean=0, n_dim_obs=1, 
                    transition_matrices=1, observation_matrices=1, 
@@ -118,87 +118,6 @@ kf = [KalmanFilter(initial_state_mean=0, n_dim_obs=1,
 state_means = [np.array([0]) for _ in range(8)]
 state_covariances = [np.array([[1]]) for _ in range(8)]
 
-# def detect_test_tube(image):
-#     results = {}
-#     global state_means, state_covariances
-    
-   
-#     for i, (tube, (x1, y1, x2, y2)) in enumerate(regions.items()):
-#         sub_image = image[y1:y2, x1:x2]   
-#         blur_sub_image = cv2.GaussianBlur(sub_image, (3, 3), 0)
-#         hsv_image = cv2.cvtColor(blur_sub_image, cv2.COLOR_BGR2HSV)
-#         hue_channel = hsv_image[:, :, 0]  # Ensure hue value is not divided by 2            
-
-#         # Define the bounds
-#         lower_bound_1 = 280  # Directly use degrees, not scaled down
-#         upper_bound_1 = 360
-#         lower_bound_2 = 0
-#         upper_bound_2 = 90
-
-#         # Convert hue_channel to the correct scale (0-360)
-#         hue_channel = hue_channel.astype(float) * 2
-
-#         # Create mask to include only hues within the red-yellow range (280°-360° and 0°-90°)
-#         mask_hue = ((hue_channel >= lower_bound_1) | (hue_channel <= upper_bound_2)).astype(np.uint8)
-
-#         # Mask the hue values outside the desired range
-#         masked_hue = np.ma.masked_array(hue_channel, mask_hue == 0)
-#         # Filter out noise: Only proceed if there are enough valid pixels
-#         valid_pixel_count = np.ma.count(masked_hue)
-#         if valid_pixel_count < VALID_PIXEL_THRESHOLD:
-#             mean_scaled_hue = None
-#         else:
-#         #     # Debugging: Print out the masked hue values
-#         #     # print(f"Masked hue values for {tube}: {masked_hue}")
-
-#         #     # Scale and convert hue values
-#             scaled_hue = np.zeros_like(masked_hue)
-#             for y in range(masked_hue.shape[0]):
-#                 for x in range(masked_hue.shape[1]):
-#                     hue_value = masked_hue[y, x]
-#                     if hue_value is np.ma.masked:
-#                         scaled_hue[y, x] = np.ma.masked
-#                     elif hue_value >= lower_bound_1 and hue_value <= upper_bound_1:
-#                         scaled_hue[y, x] = hue_value - lower_bound_1  # Scale 280-360 to 0-80
-#                     elif hue_value <= upper_bound_2:
-#                         scaled_hue[y, x] = hue_value + (upper_bound_1 - lower_bound_1)  # Scale 0-90 to 80-170
-#                     else:
-#                         scaled_hue[y, x] = np.ma.masked
-
-#             # Debugging: Print out the scaled hue values
-#             #print(f"Masked hue values for {tube}: {masked_hue}")
-#             print(f"Scaled hue values for {tube}: {scaled_hue}")
-
-#             # Calculate mean of scaled hue values
-#             mean_scaled_hue = scaled_hue.mean()
-            
-#              # Apply Kalman filter to the hue value
-#             if mean_scaled_hue is not None:
-#                 state_means[i], state_covariances[i] = kf[i].filter_update(
-#                     state_means[i],
-#                     state_covariances[i],
-#                     mean_scaled_hue
-#                 )
-#                 hue = state_means[i][0]
-#             else:
-#                 hue = None
-
-#             if mean_scaled_hue < 110 and mean_scaled_hue > 95:
-#                 mean_scaled_hue = mean_scaled_hue - 20
-
-#             # mean_scaled_hue = masked_hue.mean()
-#             print(f"Mean hue values for {tube}: {mean_scaled_hue}")
-        
-#         # Draw rectangle and text on the image
-#         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 1)
-#         if mean_scaled_hue is not None:
-#             cv2.putText(image, f"H: {mean_scaled_hue:.0f}", (x1-5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
-            
-#         else:
-#             cv2.putText(image, "H: ", (x1-5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
-            
-
-#         results[tube] = {"hue": mean_scaled_hue}
 
 #     return results
 def detect_test_tube(image):
@@ -231,6 +150,10 @@ def detect_test_tube(image):
         # Create mask to include only hues within the red-yellow range (280°-360° and 0°-90°)
         mask_hue = ((hue_channel_filtered >= lower_bound_1) | (hue_channel_filtered <= upper_bound_2)).astype(np.uint8)
 
+        # Apply morphological opening to remove small isolated noise
+        kernel = np.ones((5, 5), np.uint8)  # Define a 3x3 kernel for morphological operations
+        mask_hue = cv2.morphologyEx(mask_hue, cv2.MORPH_OPEN, kernel)
+
         # Mask the hue values outside the desired range and combine with brightness mask
         final_mask = np.logical_and(mask_hue, mask_bright_pixels)
         masked_hue = np.ma.masked_array(hue_channel_filtered, mask=~final_mask)
@@ -252,7 +175,7 @@ def detect_test_tube(image):
                         scaled_hue[y, x] = hue_value + (upper_bound_1 - lower_bound_1)  # Scale 0-90 to 80-170
                     else:
                         scaled_hue[y, x] = np.ma.masked
-
+            # print(f"Scaled hue values for {tube}: {scaled_hue}")
             mean_scaled_hue = scaled_hue.mean()
             
             # Apply Kalman filter to the hue value
@@ -269,7 +192,7 @@ def detect_test_tube(image):
             if mean_scaled_hue < 110 and mean_scaled_hue > 95:
                 mean_scaled_hue = mean_scaled_hue - 20
 
-            print(f"Mean hue values for {tube}: {mean_scaled_hue}")
+            # print(f"Mean hue values for {tube}: {mean_scaled_hue}")
 
         # Draw rectangle and text on the image
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 1)
@@ -328,47 +251,22 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
 def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time
     table_data = []
-    # hue_i = random.uniform(50, 100)  # Simulate a hue value for tube N
-    # hue_p = random.uniform(50, 100)  # Simulate a hue value for tube N
-    # hue_n = random.uniform(50, 100)  # Simulate a hue value for tube N
-    # hue_t_list = [random.uniform(50, 150) for _ in range(5)]  # Simulate hue values for tubes T1 to T7
-    if hue_n is None or hue_n == 0:
-        program_trigger = False
-        elapsed_time = 0
-        return {
-            "total_result": "Không có mẫu chứng âm. Kết thúc phản ứng.",
-            "table_data": []
-        }
-     # Check if tube N hue is less than 95
-    if hue_n > 140:
-        program_trigger = False
-        elapsed_time = 0
-        table_data.append({
-            "Tube": "Tube N",
-            "Hue Value": hue_n,
-            "C Value": "",
-            "Result": ""
-        })
-        return {
-            "total_result": "Mẫu chứng âm không đạt. Kết thúc phản ứng",
-            "table_data": table_data
-        }
-
-    c1 = hue_i / hue_n if hue_i is not None else None
-    c2 = hue_p / hue_n if hue_p is not None else None
+    
+    c1 = hue_i / hue_n if hue_i is not None else 0
+    c2 = hue_p / hue_n if hue_p is not None else 0
     c_values = {}
     table_data = []
 
-    # Add Tube N hue value
+    # Add Tube 1 (N) hue value
     table_data.append({
-        "Tube": "Tube N",
+        "Tube": "Tube 1 (N)",
         "Hue Value": hue_n,
         "C Value": "",
         "Result": ""
     })
     # Adding Tube I and Tube P to the table data
-    table_data.insert(1, {"Tube": "Tube I", "Hue Value": hue_i, "C Value": c1, "Result": ""})
-    table_data.insert(2, {"Tube": "Tube P", "Hue Value": hue_p, "C Value": c2, "Result": ""})
+    table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": ""})
+    table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": ""})
 
 
     # Process the other test tubes
@@ -398,48 +296,28 @@ def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
 
 def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time
-    # hue_i = random.uniform(50, 100)  # Simulate a hue value for tube N
-    # hue_p = random.uniform(50, 100)  # Simulate a hue value for tube N
-    # hue_n = random.uniform(50, 100)  # Simulate a hue value for tube N
-    # hue_t_list = [random.uniform(50, 150) for _ in range(5)]  # Simulate hue values for tubes T1 to T7
-    if hue_n is None or hue_n == 0:
-        program_trigger = False
-        elapsed_time = 0
-        return {
-            "total_result": "Không có mẫu chứng âm. Kết thúc phản ứng",
-            "table_data": []
-        }
-     # Check if tube N hue is less than 95
-    if hue_n > 140:
-        program_trigger = False
-        elapsed_time = 0
-        table_data.append({
-            "Tube": "Tube N",
-            "Hue Value": hue_n,
-            "C Value": "",
-            "Result": ""
-        })
-        return {
-            "total_result": "Mẫu chứng âm không đạt. Kết thúc phản ứng",
-            "table_data": table_data
-        }
-
-    c1 = hue_i / hue_n if hue_i is not None else None
-    c2 = hue_p / hue_n if hue_p is not None else None
+   
+    c1 = hue_i / hue_n if hue_i is not None else 0
+    c2 = hue_p / hue_n if hue_p is not None else 0
     c_values = {}
     table_data = []
 
-    # Add Tube N hue value
+    # Add Tube 1 (N) hue value
     table_data.append({
-        "Tube": "Tube N",
+        "Tube": "Tube 1 (N)",
         "Hue Value": hue_n,
         "C Value": "",
         "Result": ""
     })
+    if c1 >= COMPARATOR:
     # Adding Tube I and Tube P to the table data
-    table_data.insert(1, {"Tube": "Tube I", "Hue Value": hue_i, "C Value": c1, "Result": ""})
-    table_data.insert(2, {"Tube": "Tube P", "Hue Value": hue_p, "C Value": c2, "Result": ""})
-
+        table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": "Đạt"})
+    else:
+        table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": "Không đạt"})
+    if c2 >= COMPARATOR:
+        table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": "Đạt"})
+    else:
+        table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": "Không đạt"})
     # Process the other test tubes
     for i, hue_t in enumerate(hue_t_list, start=1):
         if hue_t is None:  # Skip this tube if hue_t is None
@@ -456,9 +334,9 @@ def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
 
     # Determine the total result based on C1 and C2
     if c1 is not None and c2 is not None:
-        total_result = "Thao tác không đạt" if c1 < COMPARATOR or c2 < COMPARATOR else "Thao tác tốt"
+        total_result = "Thao tác không đạt. Kết thúc phản ứng" if c1 < COMPARATOR or c2 < COMPARATOR else "Thao tác tốt. Kết thúc phản ứng"
     else:
-        total_result = "Dữ liệu không đầy đủ."
+        total_result = "Dữ liệu không đầy đủ, tube 1 hoặc 2 không có. Kết thúc phản ứng"
     return {
         "total_result": total_result,
         "table_data": table_data
@@ -466,31 +344,12 @@ def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
    
 def program_2_at_t1(hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time
-    if hue_n is None or hue_n == 0:
-        program_trigger = False
-        return {
-            "total_result": "Không có mẫu chứng âm. Kết thúc phản ứng",
-            "table_data": []
-        }
-     # Check if tube N hue is less than 95
-    if hue_n > 140:
-        program_trigger = False
-        table_data.append({
-            "Tube": "Tube N",
-            "Hue Value": hue_n,
-            "C Value": "",
-            "Result": ""
-        })
-        return {
-            "total_result": "Mẫu chứng âm không đạt. Kết thúc phản ứng",
-            "table_data": table_data
-        }
-
+   
     table_data = []
 
-    # Add Tube N hue value
+    # Add Tube 1 (N) hue value
     table_data.append({
-        "Tube": "Tube N",
+        "Tube": "Tube 1 (N)",
         "Hue Value": hue_n,
         "C Value": "",
         "Result": ""
@@ -511,40 +370,39 @@ def program_2_at_t1(hue_n, hue_t_list):
 
     # Determine the total result based on the values in the tubes
     # stop_flag = all(c_value <= COMPARATOR for c_value in [hue_t / hue_n for hue_t in hue_t_list if hue_n is not None])
-    total_result =  "Tiếp tục phản ứng"
+    total_result =  "Chương trình 2 kết thúc"
 
     return {
         "total_result": total_result,
         "table_data": table_data
     }
 
-
 def program_2_at_end(hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time
-    if hue_n is None or hue_n == 0:
-        return {
-            "total_result": "Invalid input: hue_n is None or zero.",
-            "table_data": []
-        }
-    # Check if tube N hue is less than 95
-    if hue_n > 140:
+    # if hue_n is None or hue_n == 0:
+    #     return {
+    #         "total_result": "Không có chứng âm",
+    #         "table_data": []
+    #     }
+    # # Check if tube N hue is less than 95
+    # if hue_n > 140:
         
-        table_data.append({
-            "Tube": "Tube N",
-            "Hue Value": hue_n,
-            "C Value": "",
-            "Result": ""
-        })
-        return {
-            "total_result": "Mẫu chứng âm không đạt. Kết thúc phản ứng",
-            "table_data": table_data
-        }
+    #     table_data.append({
+    #         "Tube": "Tube 1 (N)",
+    #         "Hue Value": hue_n,
+    #         "C Value": "",
+    #         "Result": "Không đạt"
+    #     })
+    #     return {
+    #         "total_result": "Mẫu chứng âm không đạt. Kết thúc phản ứng",
+    #         "table_data": table_data
+    #     }
 
     table_data = []
 
-    # Add Tube N hue value
+    # Add Tube 1 (N) hue value
     table_data.append({
-        "Tube": "Tube N",
+        "Tube": "Tube 1 (N)",
         "Hue Value": hue_n,
         "C Value": "",
         "Result": ""
@@ -563,15 +421,14 @@ def program_2_at_end(hue_n, hue_t_list):
             "Result": result
         })
 
-    # Determine the total result based on tube values
-    stop_flag = all(c_value <= COMPARATOR for c_value in [hue_t / hue_n for hue_t in hue_t_list if hue_n is not None])
-    total_result = "Thao tác tốt" if stop_flag else "Tiếp tục phản ứng"
+    # # Determine the total result based on tube values
+    # stop_flag = all(c_value <= COMPARATOR for c_value in [hue_t / hue_n for hue_t in hue_t_list if hue_n is not None])
+    # total_result = "Thao tác tốt" if stop_flag else "Tiếp tục phản ứng"
 
     return {
-        "total_result": total_result,
+        "total_result": "Chương trình 2 kết thúc",
         "table_data": table_data
     }
-
 
 def log_program_result_to_csv(program_result):
     global df_program
@@ -598,8 +455,24 @@ def log_program_result_to_csv(program_result):
     # Save the updated DataFrame back to the CSV
     df_program.to_csv(program_csv_file, index=False)
 
+def update_hue_n_and_check(hue_n):
+    global last_five_hues_n
+    
+    # Add the new hue value to the list (hue_n could be None)
+    last_five_hues_n.append(hue_n)
+    
+    # Keep only the last 5 hue values
+    if len(last_five_hues_n) > 5:
+        last_five_hues_n.pop(0)
+
+    # Check if the last 5 hue values are either > 140 or None
+    if all(hue is None or hue > 140 for hue in last_five_hues_n):
+        return True  # Condition met: stop the program
+    return False
+
+
 def capture_and_save():
-    global latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
+    global current_status, latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
     start_time = 0
     capture_counter = 0
     capture_interval_seconds = 15  # Time in seconds between each capture
@@ -609,53 +482,53 @@ def capture_and_save():
         pause_event.wait()
         
         try:
-            if capture_counter >= capture_interval_seconds:
-                capture_counter = 0  # Reset the counter after capturing
+            if program_trigger is True:
+                if capture_counter >= capture_interval_seconds:
+                    capture_counter = 0  # Reset the counter after capturing
 
-                # Always capture and process the image, regardless of whether a program is triggered
-                image = capture_image_from_camera()
-                if image is None:
-                    raise ValueError("Failed to capture image")
-                image = image[CROP_Y1:CROP_Y2, CROP_X1:CROP_X2]
-                
-                hue_value = detect_test_tube(image)
-                if hue_value is None:
-                    raise ValueError("Failed to detect test tube hues")
-                
-                # Save the hue values and image
-                timestamp = datetime.datetime.now()
-                row_hue = [timestamp] + [hue_value[f'tube_{i}']["hue"] for i in range(1, 9)]
-                df_hue.loc[len(df_hue)] = row_hue
-                df_hue.to_csv(hue_csv_file, index=False)
+                    # Always capture and process the image, regardless of whether a program is triggered
+                    image = capture_image_from_camera()
+                    if image is None:
+                        raise ValueError("Failed to capture image")
+                    image = image[CROP_Y1:CROP_Y2, CROP_X1:CROP_X2]
+                    
+                    hue_value = detect_test_tube(image)
+                    if hue_value is None:
+                        raise ValueError("Failed to detect test tube hues")
+                    
+                    # Save the hue values and image
+                    timestamp = datetime.datetime.now()
+                    row_hue = [timestamp] + [hue_value[f'tube_{i}']["hue"] for i in range(1, 9)]
+                    df_hue.loc[len(df_hue)] = row_hue
+                    df_hue.to_csv(hue_csv_file, index=False)
 
-                latest_image_path = os.path.join(image_dir, f'test_tube_{timestamp.strftime("%Y%m%d_%H%M%S")}.jpg')
-                cv2.imwrite(latest_image_path, image, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                print(f"Saved image: {latest_image_path}")
+                    latest_image_path = os.path.join(image_dir, f'test_tube_{timestamp.strftime("%Y%m%d_%H%M%S")}.jpg')
+                    cv2.imwrite(latest_image_path, image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    print(f"Saved image: {latest_image_path}")
 
-                hue_n = hue_value['tube_1']['hue']  # Assuming tube_1 is Tube N
+                    hue_n = hue_value['tube_1']['hue']  # Assuming tube_1 is Tube 1 (N)
 
-                # Check if tube N hue > 100, stop the program and show the result
-                if hue_n is not None and hue_n > 140:
-                    table_data = []                    
+                    if update_hue_n_and_check(hue_n):
+                        table_data = []
 
-                    # Add Tube N hue value
-                    table_data.append({
-                        "Tube": "Tube N",
-                        "Hue Value": hue_n,
-                        "C Value": "",
-                        "Result": ""
-                    })
-                    program_result = {
-                        'total_result': "Mẫu chứng âm không đạt vì HUE tube N > 140. Dừng phản ứng",
-                        'table_data': table_data
-                    }
-                    print(f"Program stopped: Hue N > 140, Hue N: {hue_n}")
-                    program_trigger = False
-                    elapsed_time = 0
-                    start_time = 0
-                    continue  # Exit the function, which effectively stops the loop
+                        # Add Tube 1 (N) hue value
+                        table_data.append({
+                            "Tube": "Tube 1 (N)",
+                            "Hue Value": hue_n,
+                            "C Value": "",
+                            "Result": ""
+                        })
+                        program_result = {
+                            'total_result': "Mẫu chứng âm không đạt. Dừng phản ứng",
+                            'table_data': table_data
+                        }
+                        print(f"Program stopped: Hue N condition met after 5 cycles, Hue N: {hue_n}")
+                        program_trigger = False
+                        elapsed_time = 0
+                        start_time = 0
+                        continue  # Exit the loop
 
-                if program_trigger:
+                    
                     if selected_program == 1:
                         program_return = program_1_at_t1(
                             hue_value['tube_2']['hue'],  # tube_I
@@ -676,15 +549,15 @@ def capture_and_save():
                             'total_result': "Chương trình 2 đang chạy",
                             'table_data': program_return['table_data']
                         }
+                
+                else:
+                    capture_counter += 1  # Increment the counter
 
-            else:
-                capture_counter += 1  # Increment the counter
-
-            if program_trigger:
+                
                 if start_time == 0:
                     start_time = time.time()  # Start counting from when the program is triggered
                 elapsed_time = time.time() - start_time
-
+                current_status = "Đang chạy"
                 # Check if the process time is reached
                 if elapsed_time >= selected_process_time:
                     # Handle end of process time event
@@ -722,16 +595,23 @@ def capture_and_save():
                 if t1_interval_counter >= selected_t1:
                     log_program_result_to_csv(program_result)
                     t1_interval_counter = 0  # Reset T1 interval counter 
-            if not program_trigger:
-                sleep(5)  # Increase sleep time if no program is running
-            else:
+                
+                
                 sleep(capture_interval)
+            
+            else: #program trigger is false
+
+                sleep(5)  # Increase sleep time if no program is running
+                current_status = "Đang chờ"
+                
+            
 
         except Exception as e:
             # Handle any errors and prevent thread from stopping
-            program_status['status'] = 'Chương trình gặp lỗi, hãy thử lại'
+            current_status = "Chương trình gặp lỗi, hãy thử lại"
             print(f"Error in capture thread: {e}")
             sleep(5)  # Retry after a delay
+
 
 
 
@@ -1032,7 +912,7 @@ def set_temperature_route():
         return jsonify({'error': 'Invalid request'})
 
 # Initialize the status
-current_status = "Đang chờ lệnh"
+current_status = "Đang chờ"
 
 @app.route('/status', methods=['POST'])
 def set_status():
@@ -1060,19 +940,19 @@ def set_status():
 
 @app.route('/status', methods=['GET'])
 def get_status():
-    global current_status, program_status
+    global current_status, program_trigger
 
-    if program_status:
+    if program_trigger:
         return jsonify({
             'status': current_status,
-            'program': program_status['program'],
-            'check_time_t1': program_status['check_time_t1'],
-            'process_time': program_status['process_time'],
-            'temperature': program_status['temperature']
+            'program': selected_program,
+            'check_time_t1': selected_t1,
+            'process_time': selected_process_time,
+            'temperature': selected_temperature
         })
     else:
         return jsonify({
-            'status': current_status,
+            'status': "Đang chờ",
             'program': None,
             'check_time_t1': None,
             'process_time': None,
