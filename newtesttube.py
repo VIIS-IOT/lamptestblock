@@ -1144,6 +1144,11 @@ def setup_wifi():
             subprocess.run(['sudo', 'systemctl', 'start', 'NetworkManager'], check=True)
             subprocess.run(['sudo', 'systemctl', 'enable', 'NetworkManager'], check=True)
             time.sleep(5)  # Đợi một chút để NetworkManager khởi động
+        # Quét lại Wi-Fi
+        print("Rescanning Wi-Fi networks...")
+        subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'rescan'], check=True)
+        print(f"Rescan stdout: {rescan_result.stdout.decode().strip()}")
+        print(f"Rescan stderr: {rescan_result.stderr.decode().strip()}")
 
         # Kết nối tới mạng Wi-Fi mới bằng nmcli
         print(f"Connecting to new Wi-Fi: SSID={ssid_new}, PASSWORD={password_new}")

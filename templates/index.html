@@ -480,7 +480,9 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="ssid" class="form-label">SSID:</label>
-                        <input type="text" class="form-control" id="ssid" required>
+                        <select class="form-control" id="ssid" required>
+                            <!-- Options will be dynamically populated -->
+                        </select>
                     </div>
                     <div class="col-md-6">
                         <label for="password" class="form-label">Password:</label>
@@ -501,6 +503,25 @@
         let elapsedTime = 0;  // Initialize elapsed time
         let elapsedTimeIntervalId;  // Declare a variable to store the elapsed time interval ID
         let processTimeGlobal;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch('/scan_wifi')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const ssidSelect = document.getElementById('ssid');
+                        data.wifi_list.forEach(wifi => {
+                            const option = document.createElement('option');
+                            option.value = wifi.ssid;
+                            option.textContent = wifi.ssid;
+                            ssidSelect.appendChild(option);
+                        });
+                    } else {
+                        console.error('Failed to scan Wi-Fi networks:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        });
         document.addEventListener('DOMContentLoaded', (event) => {
             // Fetch status when the page loads
             fetchStatus();
@@ -1013,32 +1034,19 @@
                 },
                 body: JSON.stringify({ ssid: ssid, password: password })
             })
-            const wifiStatus = document.getElementById('wifiStatus');
-            // if (data.status === 'success') {
-            //     wifiStatus.innerHTML = '<div class="alert alert-success">WiFi đã được thiết lập thành công!</div>';
-            // } else {
-            //     wifiStatus.innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại: ' + data.message + '</div>';
-            // }
-            wifiStatus.innerHTML = '<div class="alert alert-success">Thiết bị đang được thiết lập wifi mới. Vui lòng đợi khoảng 30s, sau đó thử kết nối lại vào mạng. Nếu không thể kết nối tới wifi mới, thiết bị sẽ kết nối vào wifi mặc định AmphaOnco-VP</div>';
-            // .then(response => response.json())
-            // .then(data => {
-            //     const wifiStatus = document.getElementById('wifiStatus');
-            //     // if (data.status === 'success') {
-            //     //     wifiStatus.innerHTML = '<div class="alert alert-success">WiFi đã được thiết lập thành công!</div>';
-            //     // } else {
-            //     //     wifiStatus.innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại: ' + data.message + '</div>';
-            //     // }
-            //     wifiStatus.innerHTML = '<div class="alert alert-success">Thiết bị đang được thiết lập wifi mới. Vui lòng đợi trong giây lát, sau đó thử kết nối lại vào mạng.</div>';
-
-            // })
-            // .catch(error => {
-            //     console.error('Error:', error);
-            //     document.getElementById('wifiStatus').innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại.</div>';
-            // });
-            // Reload the page after 30 seconds
-            setTimeout(() => {
-                location.reload();
-            }, 3000);  // 30000 milliseconds = 30 seconds
+                .then(response => response.json())
+                .then(data => {
+                    const wifiStatus = document.getElementById('wifiStatus');
+                    if (data.status === 'success') {
+                        wifiStatus.innerHTML = '<div class="alert alert-success">WiFi đã được thiết lập thành công!</div>';
+                    } else {
+                        wifiStatus.innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại: ' + data.message + '</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('wifiStatus').innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại.</div>';
+                });
         });
 
     </script>

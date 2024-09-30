@@ -1344,7 +1344,31 @@ def setup_wifi():
     except Exception as e:
         print(f"Error: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)})
-        
+
+@app.route('/scan_wifi', methods=['GET'])
+def scan_wifi():
+    try:
+        # Run the rescan command
+        subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'rescan'], check=True)
+
+        # Get the list of available Wi-Fi networks
+        result = subprocess.run(['nmcli', '-t', '-f', 'SSID,SECURITY', 'dev', 'wifi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = result.stdout.decode('utf-8').strip()
+
+        if result.returncode != 0:
+            return jsonify({'status': 'error', 'message': 'Failed to scan Wi-Fi networks', 'error': result.stderr.decode('utf-8').strip()}), 500
+
+        # Parse the output into a list of dictionaries
+        wifi_list = []
+        for line in output.split('\n'):
+            ssid, security = line.split(':')
+            wifi_list.append({'ssid': ssid, 'security': security})
+
+        return jsonify({'status': 'success', 'wifi_list': wifi_list})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 if __name__ == '__main__':
     handle_temperature('set', 25)
     
