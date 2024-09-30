@@ -41,7 +41,7 @@ last_five_hues_n = []  # Store the last 5 hues for Tube N
 
 COMPARATOR = 1.4
 ORANGE_OFFSET = 20
-VALID_PIXEL_THRESHOLD = 60  # Minimum number of valid pixels required
+VALID_PIXEL_THRESHOLD = 80  # Minimum number of valid pixels required
 # Directory to save images
 image_dir = '/home/lamp/testtubenew/Test_Image'
 
@@ -98,10 +98,7 @@ regions = {
     "tube_7": (410, 70, 440, 100),
     "tube_8": (476, 70, 506, 105)
 }
-CROP_Y1 = 345
-CROP_Y2 = 455
-CROP_X1 = 290
-CROP_X2 = 840
+CROP_Y1, CROP_Y2, CROP_X1, CROP_X2 = 308, 418, 337, 887
 
 
 
@@ -120,12 +117,172 @@ state_covariances = [np.array([[1]]) for _ in range(8)]
 
 
 #     return results
+# def detect_test_tube(image):
+#     results = {}
+#     global state_means, state_covariances
+
+#     # Define threshold for brightness (V channel) to filter out bright spots
+#     BRIGHTNESS_THRESHOLD = 240  # Adjust this value based on the actual noise level in your images
+
+#     for i, (tube, (x1, y1, x2, y2)) in enumerate(regions.items()):
+#         sub_image = image[y1:y2, x1:x2]
+#         blur_sub_image = cv2.GaussianBlur(sub_image, (3, 3), 0)
+#         hsv_image = cv2.cvtColor(blur_sub_image, cv2.COLOR_BGR2HSV)
+#         hue_channel = hsv_image[:, :, 0]  # Hue channel
+#         value_channel = hsv_image[:, :, 2]  # V (brightness) channel
+
+#         # Filter out pixels that have high brightness values (likely noise)
+#         mask_bright_pixels = value_channel < BRIGHTNESS_THRESHOLD
+#         hue_channel_filtered = np.ma.masked_array(hue_channel, mask=~mask_bright_pixels)
+
+#         # Define the bounds for red-yellow hues
+#         lower_bound_1 = 280  # Directly use degrees, not scaled down
+#         upper_bound_1 = 360
+#         lower_bound_2 = 0
+#         upper_bound_2 = 90
+
+#         # Convert hue_channel to the correct scale (0-360)
+#         hue_channel_filtered = hue_channel_filtered.astype(float) * 2
+
+#         # Create mask to include only hues within the red-yellow range (280°-360° and 0°-90°)
+#         mask_hue = ((hue_channel_filtered >= lower_bound_1) | (hue_channel_filtered <= upper_bound_2)).astype(np.uint8)
+
+#         # Apply morphological opening to remove small isolated noise
+#         kernel = np.ones((5, 5), np.uint8)  # Define a 3x3 kernel for morphological operations
+#         mask_hue = cv2.morphologyEx(mask_hue, cv2.MORPH_OPEN, kernel)
+
+#         # Mask the hue values outside the desired range and combine with brightness mask
+#         final_mask = np.logical_and(mask_hue, mask_bright_pixels)
+#         masked_hue = np.ma.masked_array(hue_channel_filtered, mask=~final_mask)
+
+#         # Filter out noise: Only proceed if there are enough valid pixels
+#         valid_pixel_count = np.ma.count(masked_hue)
+#         if valid_pixel_count < VALID_PIXEL_THRESHOLD:
+#             mean_scaled_hue = None
+#         else:
+#             scaled_hue = np.zeros_like(masked_hue)
+#             for y in range(masked_hue.shape[0]):
+#                 for x in range(masked_hue.shape[1]):
+#                     hue_value = masked_hue[y, x]
+#                     if hue_value is np.ma.masked:
+#                         scaled_hue[y, x] = np.ma.masked
+#                     elif hue_value >= lower_bound_1 and hue_value <= upper_bound_1:
+#                         scaled_hue[y, x] = hue_value - lower_bound_1  # Scale 280-360 to 0-80
+#                     elif hue_value <= upper_bound_2:
+#                         scaled_hue[y, x] = hue_value + (upper_bound_1 - lower_bound_1)  # Scale 0-90 to 80-170
+#                     else:
+#                         scaled_hue[y, x] = np.ma.masked
+#             # print(f"Scaled hue values for {tube}: {scaled_hue}")
+#             mean_scaled_hue = scaled_hue.mean()
+            
+#             # Apply Kalman filter to the hue value
+#             if mean_scaled_hue is not None:
+#                 state_means[i], state_covariances[i] = kf[i].filter_update(
+#                     state_means[i],
+#                     state_covariances[i],
+#                     mean_scaled_hue
+#                 )
+#                 hue = state_means[i][0]
+#             else:
+#                 hue = None
+
+#             if mean_scaled_hue < 110 and mean_scaled_hue > 95:
+#                 mean_scaled_hue = mean_scaled_hue - 20
+
+#             # print(f"Mean hue values for {tube}: {mean_scaled_hue}")
+
+#         # Draw rectangle and text on the image
+#         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 1)
+#         if mean_scaled_hue is not None:
+#             cv2.putText(image, f"H: {mean_scaled_hue:.0f}", (x1-5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
+#         else:
+#             cv2.putText(image, "H: ", (x1-5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
+
+#         results[tube] = {"hue": mean_scaled_hue}
+
+#     return results
+# Global variable to store the history of hue values (for 8 tubes)
+hue_history = [[] for _ in range(8)]  # Store the last 5 hue values for each tube
+
+def update_hue_and_calculate_average(hue_value):
+    global hue_history
+
+    filtered_hues = []
+
+    for i in range(8):
+        if hue_value[i] is not None:
+            # Add the current hue value to the history list for this tube
+            hue_history[i].append(hue_value[i])
+
+            # Only keep the last 5 values in the history
+            if len(hue_history[i]) > 5:
+                hue_history[i].pop(0)
+
+            # Filter out None values and calculate the average of the remaining values
+            valid_hues = [h for h in hue_history[i] if h is not None]
+            if valid_hues:
+                average_hue = sum(valid_hues) / len(valid_hues)
+            else:
+                average_hue = None
+        else:
+            # If current hue is None, we don't update the history, just use the previous values
+            valid_hues = [h for h in hue_history[i] if h is not None]
+            if valid_hues:
+                average_hue = sum(valid_hues) / len(valid_hues)
+            else:
+                average_hue = None
+
+        filtered_hues.append(average_hue)
+
+    return filtered_hues
+
+# # Global variable to store the history of hue values (for 8 tubes)
+# hue_history = [[] for _ in range(8)]  # Store the last 5 hue values for each tube
+
+# def filter_fake_hue(hue_value):
+#     """
+#     Filter out fake hue values by checking the last 3 values for each tube.
+#     If the previous 2 values are None, the current value is considered fake and set to None.
+#     """
+#     global hue_history
+
+#     filtered_hues = []
+
+#     for i in range(8):  # Assume there are 8 tubes
+#         if hue_value[i] is not None:
+#             # Add the current hue value to the history for this tube
+#             hue_history[i].append(hue_value[i])
+
+#             # Only keep the last 3 values in the history
+#             if len(hue_history[i]) > 3:
+#                 hue_history[i].pop(0)
+
+#             # Check if the previous 2 values were None
+#             if len(hue_history[i]) >= 2 and hue_history[i][-2] is None and hue_history[i][-3] is None:
+#                 # If the two previous values are None, the current value is likely fake
+#                 filtered_hues.append(None)
+#             else:
+#                 filtered_hues.append(hue_value[i])
+#         else:
+#             # If the current hue is None, add it to the history
+#             hue_history[i].append(None)
+
+#             # Only keep the last 3 values in the history
+#             if len(hue_history[i]) > 3:
+#                 hue_history[i].pop(0)
+
+#             # Add None to the filtered results
+#             filtered_hues.append(None)
+
+#     return filtered_hues
+
 def detect_test_tube(image):
     results = {}
-    global state_means, state_covariances
-
+    
     # Define threshold for brightness (V channel) to filter out bright spots
     BRIGHTNESS_THRESHOLD = 240  # Adjust this value based on the actual noise level in your images
+
+    hue_values = []  # List to store hue values for all tubes
 
     for i, (tube, (x1, y1, x2, y2)) in enumerate(regions.items()):
         sub_image = image[y1:y2, x1:x2]
@@ -151,7 +308,7 @@ def detect_test_tube(image):
         mask_hue = ((hue_channel_filtered >= lower_bound_1) | (hue_channel_filtered <= upper_bound_2)).astype(np.uint8)
 
         # Apply morphological opening to remove small isolated noise
-        kernel = np.ones((5, 5), np.uint8)  # Define a 3x3 kernel for morphological operations
+        kernel = np.ones((5, 5), np.uint8)  # Define a 5x5 kernel for morphological operations
         mask_hue = cv2.morphologyEx(mask_hue, cv2.MORPH_OPEN, kernel)
 
         # Mask the hue values outside the desired range and combine with brightness mask
@@ -175,33 +332,33 @@ def detect_test_tube(image):
                         scaled_hue[y, x] = hue_value + (upper_bound_1 - lower_bound_1)  # Scale 0-90 to 80-170
                     else:
                         scaled_hue[y, x] = np.ma.masked
-            # print(f"Scaled hue values for {tube}: {scaled_hue}")
-            mean_scaled_hue = scaled_hue.mean()
             
-            # Apply Kalman filter to the hue value
-            if mean_scaled_hue is not None:
-                state_means[i], state_covariances[i] = kf[i].filter_update(
-                    state_means[i],
-                    state_covariances[i],
-                    mean_scaled_hue
-                )
-                hue = state_means[i][0]
-            else:
-                hue = None
+            mean_scaled_hue = scaled_hue.mean()
 
-            if mean_scaled_hue < 110 and mean_scaled_hue > 95:
-                mean_scaled_hue = mean_scaled_hue - 20
+        # Append the calculated hue value for this tube
+        hue_values.append(mean_scaled_hue)
 
-            # print(f"Mean hue values for {tube}: {mean_scaled_hue}")
+    # Update the hue values using the moving average filter
+    filtered_hues = update_hue_and_calculate_average(hue_values)
 
-        # Draw rectangle and text on the image
+    # Apply the fake hue filter to clean the results
+    #filtered_hues = filter_fake_hue(filtered_hues)
+
+    # Draw rectangle and text on the image, and store the results
+    for i, (tube, (x1, y1, x2, y2)) in enumerate(regions.items()):
+        hue = filtered_hues[i]
+
+        # Draw rectangle around the tube area
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 1)
-        if mean_scaled_hue is not None:
-            cv2.putText(image, f"H: {mean_scaled_hue:.0f}", (x1-5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
-        else:
-            cv2.putText(image, "H: ", (x1-5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
 
-        results[tube] = {"hue": mean_scaled_hue}
+        # Display the hue value or an empty space if None
+        if hue is not None:
+            cv2.putText(image, f"H: {hue:.0f}", (x1 - 5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
+        else:
+            cv2.putText(image, "H: ", (x1 - 5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
+
+        # Save the hue result for this tube
+        results[tube] = {"hue": hue}
 
     return results
 
@@ -215,12 +372,12 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-h', '960',
             '-q', '80',
             '-t', '1000',
-            '-hf','-vf',
-            '-ss','25000',
-            '-awb','auto',
-            '-ISO','400',
-            '-sa','-40'
-            #'-sh','70'
+            '-hf', '-vf',
+            '-ss', '18000',
+            '-awb', 'auto',
+            '-ISO', '400',
+            '-sa', '-20',
+            '-sh','50'
             #'-ifx','denoise' # 2 seconds delay before capture
         ]
 
@@ -248,14 +405,16 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
         print(f"Error capturing image: {e}")
         return None
 
+# Thêm biến global để theo dõi số lần liên tiếp tất cả các tube T đều dương tính
+positive_consecutive_count = 0  # Đếm số lần liên tiếp tất cả các tube đều dương tính
+
 def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
-    global program_trigger, start_time, elapsed_time
+    global program_trigger, start_time, elapsed_time, positive_consecutive_count, total_status, current_status
     table_data = []
     
     c1 = hue_i / hue_n if hue_i is not None else 0
     c2 = hue_p / hue_n if hue_p is not None else 0
-    c_values = {}
-    table_data = []
+    all_positive = True  # Biến cờ để kiểm tra tất cả tube T có dương tính hay không
 
     # Add Tube 1 (N) hue value
     table_data.append({
@@ -268,14 +427,23 @@ def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
     table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": ""})
     table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": ""})
 
-
     # Process the other test tubes
     for i, hue_t in enumerate(hue_t_list, start=1):
         if hue_t is None:  # Skip this tube if hue_t is None
             continue
         c_value = hue_t / hue_n if hue_t is not None and hue_n != 0 else None
-        c_values[f'C3{i}'] = c_value
-        result = "Dương tính" if c_value is not None and c_value > COMPARATOR else "Âm tính"
+
+        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
+        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
+            result = "Dương tính"
+        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
+        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
+            result = "Âm tính"
+            all_positive = False  # Nếu có tube âm tính, không được tính là tất cả đều dương tính
+        else:
+            result = ""
+            all_positive = False  # Nếu không rõ kết quả thì cũng không tính là tất cả dương tính
+
         table_data.append({
             "Tube": f"Tube T{i+3}",
             "Hue Value": hue_t,
@@ -283,14 +451,88 @@ def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
             "Result": result
         })
 
-    
+    # Kiểm tra nếu tất cả các tube T đều dương tính
+    if all_positive:
+        positive_consecutive_count += 1
+    else:
+        positive_consecutive_count = 0  # Reset nếu có tube không dương tính
+
+    # Nếu tất cả tube T dương tính 3 lần liên tiếp, dừng chương trình
+    if positive_consecutive_count >= 3:
+        program_trigger = False  # Dừng chương trình
+        start_time = 0
+        elapsed_time = 0
+        positive_consecutive_count = 0  # Reset bộ đếm
+        total_status = "Phản ứng đã dừng, tất cả tube T đều dương tính"
+        current_status = "Phản ứng kết thúc"
+        print("Dừng phản ứng: Tất cả tube T đều dương tính 3 lần liên tiếp")
+
     # Determine the total result based on C1 and C2
     if c1 is not None and c2 is not None:
         total_result = "Tiếp tục phản ứng" if c1 < COMPARATOR or c2 < COMPARATOR else "Thao tác tốt"
     else:
         total_result = "Dữ liệu không đầy đủ."
+    
     return {
         "total_result": total_result,
+        "table_data": table_data
+    }
+
+def program_2_at_t1(hue_n, hue_t_list):
+    global program_trigger, start_time, elapsed_time, positive_consecutive_count, total_status, current_status
+    table_data = []
+    all_positive = True  # Biến cờ để kiểm tra tất cả tube T có dương tính hay không
+
+    # Add Tube 1 (N) hue value
+    table_data.append({
+        "Tube": "Tube 1 (N)",
+        "Hue Value": hue_n,
+        "C Value": "",
+        "Result": ""
+    })
+
+    # Process tubes T1 to T7
+    for i, hue_t in enumerate(hue_t_list, start=1):
+        if hue_t is None:  # Skip this tube if hue_t is None
+            continue
+        c_value = hue_t / hue_n if hue_t is not None else None
+
+        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
+        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
+            result = "Dương tính"
+        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
+        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
+            result = "Âm tính"
+            all_positive = False  # Nếu có tube âm tính, không được tính là tất cả đều dương tính
+        else:
+            result = ""
+            all_positive = False  # Nếu không rõ kết quả thì cũng không tính là tất cả dương tính
+
+        table_data.append({
+            "Tube": f"Tube T{i}",
+            "Hue Value": hue_t,
+            "C Value": c_value,
+            "Result": result
+        })
+
+    # Kiểm tra nếu tất cả các tube T đều dương tính
+    if all_positive:
+        positive_consecutive_count += 1
+    else:
+        positive_consecutive_count = 0  # Reset nếu có tube không dương tính
+
+    # Nếu tất cả tube T dương tính 3 lần liên tiếp, dừng chương trình
+    if positive_consecutive_count >= 3:
+        program_trigger = False  # Dừng chương trình
+        start_time = 0
+        elapsed_time = 0
+        positive_consecutive_count = 0  # Reset bộ đếm
+        total_status = "Phản ứng đã dừng, tất cả tube T đều dương tính"
+        current_status = "Phản ứng kết thúc"
+        print("Dừng phản ứng: Tất cả tube T đều dương tính 3 lần liên tiếp")
+
+    return {
+        "total_result": "Chương trình 2 kết thúc",
         "table_data": table_data
     }
 
@@ -309,28 +551,37 @@ def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
         "C Value": "",
         "Result": ""
     })
-    if c1 >= COMPARATOR:
+    if c1 >= COMPARATOR and hue_i > 110:
     # Adding Tube I and Tube P to the table data
         table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": "Đạt"})
     else:
         table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": "Không đạt"})
-    if c2 >= COMPARATOR:
+    if c2 >= COMPARATOR and hue_p > 110:
         table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": "Đạt"})
     else:
         table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": "Không đạt"})
+    
     # Process the other test tubes
     for i, hue_t in enumerate(hue_t_list, start=1):
         if hue_t is None:  # Skip this tube if hue_t is None
             continue
         c_value = hue_t / hue_n if hue_t is not None else None
-        c_values[f'C3{i}'] = c_value
-        result = "Dương tính" if c_value is not None and c_value > COMPARATOR else "Âm tính"
+
+        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
+        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
+            result = "Dương tính"
+        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
+        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
+            result = "Âm tính"
+        else:
+            result = ""
+
         table_data.append({
             "Tube": f"Tube T{i+3}",
             "Hue Value": hue_t,
             "C Value": c_value,
             "Result": result
-        })    
+        })
 
     # Determine the total result based on C1 and C2
     if c1 is not None and c2 is not None:
@@ -341,62 +592,9 @@ def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
         "total_result": total_result,
         "table_data": table_data
     }
-   
-def program_2_at_t1(hue_n, hue_t_list):
-    global program_trigger, start_time, elapsed_time
-   
-    table_data = []
-
-    # Add Tube 1 (N) hue value
-    table_data.append({
-        "Tube": "Tube 1 (N)",
-        "Hue Value": hue_n,
-        "C Value": "",
-        "Result": ""
-    })
-
-    # Process tubes T1 to T7
-    for i, hue_t in enumerate(hue_t_list, start=1):
-        if hue_t is None:  # Skip this tube if hue_t is None
-            continue
-        c_value = hue_t / hue_n if hue_t is not None else None
-        result = "Dương tính" if c_value is not None and c_value > COMPARATOR else "Âm tính"
-        table_data.append({
-            "Tube": f"Tube T{i}",
-            "Hue Value": hue_t,
-            "C Value": c_value,
-            "Result": result
-        })
-
-    # Determine the total result based on the values in the tubes
-    # stop_flag = all(c_value <= COMPARATOR for c_value in [hue_t / hue_n for hue_t in hue_t_list if hue_n is not None])
-    total_result =  "Chương trình 2 kết thúc"
-
-    return {
-        "total_result": total_result,
-        "table_data": table_data
-    }
 
 def program_2_at_end(hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time
-    # if hue_n is None or hue_n == 0:
-    #     return {
-    #         "total_result": "Không có chứng âm",
-    #         "table_data": []
-    #     }
-    # # Check if tube N hue is less than 95
-    # if hue_n > 140:
-        
-    #     table_data.append({
-    #         "Tube": "Tube 1 (N)",
-    #         "Hue Value": hue_n,
-    #         "C Value": "",
-    #         "Result": "Không đạt"
-    #     })
-    #     return {
-    #         "total_result": "Mẫu chứng âm không đạt. Kết thúc phản ứng",
-    #         "table_data": table_data
-    #     }
 
     table_data = []
 
@@ -413,17 +611,22 @@ def program_2_at_end(hue_n, hue_t_list):
         if hue_t is None:  # Skip this tube if hue_t is None
             continue
         c_value = hue_t / hue_n if hue_t is not None else None
-        result = "Dương tính" if c_value is not None and c_value > COMPARATOR else "Âm tính"
+
+        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
+        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
+            result = "Dương tính"
+        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
+        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
+            result = "Âm tính"
+        else:
+            result = ""
+
         table_data.append({
             "Tube": f"Tube T{i}",
             "Hue Value": hue_t,
             "C Value": c_value,
             "Result": result
         })
-
-    # # Determine the total result based on tube values
-    # stop_flag = all(c_value <= COMPARATOR for c_value in [hue_t / hue_n for hue_t in hue_t_list if hue_n is not None])
-    # total_result = "Thao tác tốt" if stop_flag else "Tiếp tục phản ứng"
 
     return {
         "total_result": "Chương trình 2 kết thúc",
@@ -465,11 +668,15 @@ def update_hue_n_and_check(hue_n):
     if len(last_five_hues_n) > 5:
         last_five_hues_n.pop(0)
 
+    # Wait until at least 5 samples have been collected before making a conclusion
+    if len(last_five_hues_n) < 5:
+        return False  # Not enough data yet
+
     # Check if the last 5 hue values are either > 140 or None
     if all(hue is None or hue > 140 for hue in last_five_hues_n):
         return True  # Condition met: stop the program
-    return False
 
+    return False
 
 def capture_and_save():
     global current_status, latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
@@ -557,7 +764,10 @@ def capture_and_save():
                 if start_time == 0:
                     start_time = time.time()  # Start counting from when the program is triggered
                 elapsed_time = time.time() - start_time
+                print(f'Thời gian chạy: {elapsed_time}')
+                
                 current_status = "Đang chạy"
+
                 # Check if the process time is reached
                 if elapsed_time >= selected_process_time:
                     # Handle end of process time event
@@ -611,9 +821,6 @@ def capture_and_save():
             current_status = "Chương trình gặp lỗi, hãy thử lại"
             print(f"Error in capture thread: {e}")
             sleep(5)  # Retry after a delay
-
-
-
 
 # Function to start capture thread
 def start_capture_thread():
@@ -1072,6 +1279,36 @@ def fetch_all_data():
 
     return jsonify(response_data)
 
+# @app.route('/setup_wifi', methods=['POST'])
+# def setup_wifi():
+#     try:
+#         data = request.get_json()
+#         ssid_new = data['ssid']
+#         password_new = data['password']
+
+#         # Kiểm tra và khởi động NetworkManager nếu cần
+#         nm_status = subprocess.run(['systemctl', 'is-active', 'NetworkManager'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#         if nm_status.stdout.decode().strip() != 'active':
+#             print("NetworkManager is not running. Starting NetworkManager...")
+#             subprocess.run(['sudo', 'systemctl', 'start', 'NetworkManager'], check=True)
+#             subprocess.run(['sudo', 'systemctl', 'enable', 'NetworkManager'], check=True)
+#             time.sleep(5)  # Đợi một chút để NetworkManager khởi động
+
+#         # Kết nối tới mạng Wi-Fi mới bằng nmcli
+#         print(f"Connecting to new Wi-Fi: SSID={ssid_new}, PASSWORD={password_new}")
+#         result = subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'connect', ssid_new, 'password', password_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#         print(f"nmcli stdout: {result.stdout.decode().strip()}")
+#         print(f"nmcli stderr: {result.stderr.decode().strip()}")
+#         if result.returncode == 0:
+#             print("Successfully connected to new Wi-Fi")
+#             return jsonify({'status': 'success', 'message': 'Connected to new Wi-Fi', 'connected_ssid': ssid_new})
+#         else:
+#             print(f"Failed to connect to new Wi-Fi: {result.stderr.decode().strip()}")
+#             return jsonify({'status': 'error', 'message': 'Failed to connect to new Wi-Fi', 'error': result.stderr.decode().strip()})
+
+#     except Exception as e:
+#         print(f"Error: {str(e)}")
+#         return jsonify({'status': 'error', 'message': str(e)})
 @app.route('/setup_wifi', methods=['POST'])
 def setup_wifi():
     try:
@@ -1085,11 +1322,16 @@ def setup_wifi():
             print("NetworkManager is not running. Starting NetworkManager...")
             subprocess.run(['sudo', 'systemctl', 'start', 'NetworkManager'], check=True)
             subprocess.run(['sudo', 'systemctl', 'enable', 'NetworkManager'], check=True)
-            time.sleep(5)  # Đợi một chút để NetworkManager khởi động
+            time.sleep(10)  # Đợi một chút để NetworkManager khởi động
 
-        # Kết nối tới mạng Wi-Fi mới bằng nmcli
+        # Xóa cấu hình Wi-Fi cũ
+        # subprocess.run(['sudo', 'nmcli', 'connection', 'delete', 'id', ssid_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # Kết nối tới mạng Wi-Fi mới
         print(f"Connecting to new Wi-Fi: SSID={ssid_new}, PASSWORD={password_new}")
         result = subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'connect', ssid_new, 'password', password_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #result = subprocess.run(['sudo', 'nmcli', 'connection', 'up', ssid_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
         print(f"nmcli stdout: {result.stdout.decode().strip()}")
         print(f"nmcli stderr: {result.stderr.decode().strip()}")
         if result.returncode == 0:

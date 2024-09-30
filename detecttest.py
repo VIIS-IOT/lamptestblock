@@ -39,10 +39,11 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-q', '80',
             '-t', '1000',
             '-hf', '-vf',
-            '-ss', '25000',
+            '-ss', '18000',
             '-awb', 'auto',
             '-ISO', '400',
-            '-sa', '-20'
+            '-sa', '-20',
+            '-sh', '50'
         ]
 
         # Use subprocess.Popen for better control
@@ -178,7 +179,7 @@ if __name__ == '__main__':
     image = capture_image_from_camera(output_path=output_image_path)
     if image is not None:
         # Crop the image if necessary (you can adjust these coordinates)
-        CROP_Y1, CROP_Y2, CROP_X1, CROP_X2 = 345, 455, 290, 840
+        CROP_Y1, CROP_Y2, CROP_X1, CROP_X2 = 308, 418, 337, 887
         image = image[CROP_Y1:CROP_Y2, CROP_X1:CROP_X2]
 
         # Run the test tube detection algorithm
