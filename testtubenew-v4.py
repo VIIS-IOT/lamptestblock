@@ -1319,30 +1319,50 @@ def setup_wifi():
         # Kiểm tra và khởi động NetworkManager nếu cần
         nm_status = subprocess.run(['systemctl', 'is-active', 'NetworkManager'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if nm_status.stdout.decode().strip() != 'active':
-            print("NetworkManager is not running. Starting NetworkManager...")
+            print("NetworkManager không chạy. Đang khởi động NetworkManager...")
             subprocess.run(['sudo', 'systemctl', 'start', 'NetworkManager'], check=True)
             subprocess.run(['sudo', 'systemctl', 'enable', 'NetworkManager'], check=True)
             time.sleep(10)  # Đợi một chút để NetworkManager khởi động
 
-        # Xóa cấu hình Wi-Fi cũ
-        # subprocess.run(['sudo', 'nmcli', 'connection', 'delete', 'id', ssid_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Kiểm tra Wi-Fi hiện tại
+        current_wifi = subprocess.run(['nmcli', '-t', '-f', 'active,ssid', 'dev', 'wifi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        current_wifi_list = current_wifi.stdout.decode().strip().split('\n')
+        current_ssid = None
+        for wifi in current_wifi_list:
+            if wifi.startswith('yes:'):
+                current_ssid = wifi.split(':')[1]
+                break
+
+        if current_ssid == ssid_new:
+            print(f"Bạn đã kết nối với Wi-Fi {ssid_new} rồi.")
+            return jsonify({'status': 'error', 'message': f'Bạn đã kết nối với Wi-Fi {ssid_new} rồi.'})
 
         # Kết nối tới mạng Wi-Fi mới
-        print(f"Connecting to new Wi-Fi: SSID={ssid_new}, PASSWORD={password_new}")
+        print(f"Đang kết nối tới Wi-Fi mới: SSID={ssid_new}, PASSWORD={password_new}")
         result = subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'connect', ssid_new, 'password', password_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #result = subprocess.run(['sudo', 'nmcli', 'connection', 'up', ssid_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         print(f"nmcli stdout: {result.stdout.decode().strip()}")
         print(f"nmcli stderr: {result.stderr.decode().strip()}")
         if result.returncode == 0:
-            print("Successfully connected to new Wi-Fi")
-            return jsonify({'status': 'success', 'message': 'Connected to new Wi-Fi', 'connected_ssid': ssid_new})
+            print("Kết nối thành công tới Wi-Fi mới")
+            return jsonify({'status': 'success', 'message': 'Kết nối thành công tới Wi-Fi mới', 'connected_ssid': ssid_new})
         else:
-            print(f"Failed to connect to new Wi-Fi: {result.stderr.decode().strip()}")
-            return jsonify({'status': 'error', 'message': 'Failed to connect to new Wi-Fi', 'error': result.stderr.decode().strip()})
+            print(f"Kết nối tới Wi-Fi mới thất bại: {result.stderr.decode().strip()}")
+            # Attempt to reconnect to the previous Wi-Fi network
+            if current_ssid:
+                print(f"Đang kết nối lại tới Wi-Fi cũ: SSID={current_ssid}")
+                reconnect_result = subprocess.run(['sudo', 'nmcli', 'connection', 'up', current_ssid], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if reconnect_result.returncode == 0:
+                    print(f"Kết nối lại thành công tới Wi-Fi cũ: {current_ssid}")
+                    return jsonify({'status': 'error', 'message': f'Kết nối tới Wi-Fi mới thất bại, đã kết nối lại tới Wi-Fi cũ: {current_ssid}', 'error': result.stderr.decode().strip()})
+                else:
+                    print(f"Kết nối lại tới Wi-Fi cũ thất bại: {reconnect_result.stderr.decode().strip()}")
+                    return jsonify({'status': 'error', 'message': f'Kết nối tới Wi-Fi mới thất bại và không thể kết nối lại tới Wi-Fi cũ: {current_ssid}', 'error': result.stderr.decode().strip()})
+            else:
+                return jsonify({'status': 'error', 'message': 'Kết nối tới Wi-Fi mới thất bại và không có Wi-Fi cũ để kết nối lại', 'error': result.stderr.decode().strip()})
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Lỗi: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/scan_wifi', methods=['GET'])
@@ -1352,11 +1372,20 @@ def scan_wifi():
         subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'rescan'], check=True)
 
         # Get the list of available Wi-Fi networks
-        result = subprocess.run(['nmcli', '-t', '-f', 'SSID,SECURITY', 'dev', 'wifi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(['sudo', 'nmcli', '-t', '-f', 'SSID,SECURITY', 'dev', 'wifi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stdout.decode('utf-8').strip()
 
         if result.returncode != 0:
-            return jsonify({'status': 'error', 'message': 'Failed to scan Wi-Fi networks', 'error': result.stderr.decode('utf-8').strip()}), 500
+            return jsonify({'status': 'error', 'message': 'Quét mạng Wi-Fi thất bại', 'error': result.stderr.decode('utf-8').strip()}), 500
+
+        # Get the currently connected Wi-Fi network
+        current_wifi_result = subprocess.run(['sudo', 'nmcli', '-t', '-f', 'active,ssid', 'dev', 'wifi'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        current_wifi_output = current_wifi_result.stdout.decode('utf-8').strip()
+        current_ssid = None
+        for line in current_wifi_output.split('\n'):
+            if line.startswith('yes:'):
+                current_ssid = line.split(':')[1]
+                break
 
         # Parse the output into a list of dictionaries
         wifi_list = []
@@ -1364,11 +1393,14 @@ def scan_wifi():
             ssid, security = line.split(':')
             wifi_list.append({'ssid': ssid, 'security': security})
 
+        # Reorder the list to place the currently connected Wi-Fi at index 0
+        if current_ssid:
+            wifi_list = sorted(wifi_list, key=lambda x: x['ssid'] != current_ssid)
+
         return jsonify({'status': 'success', 'wifi_list': wifi_list})
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
 if __name__ == '__main__':
     handle_temperature('set', 25)
     
