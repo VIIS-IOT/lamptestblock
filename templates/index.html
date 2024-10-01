@@ -9,10 +9,29 @@
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
 
     <!-- Optional theme -->
-    <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css">
+    <!-- <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css"> -->
     <script src="/static/js/plotly.min.js"></script>
 
     <style>
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #4caf50;
+            /* Green */
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
         @font-face {
             font-family: 'Roboto';
             src: url('/static/font/poppins/Poppins-Regular.ttf') format('truetype');
@@ -486,7 +505,7 @@
                     </div>
                     <div class="col-md-6">
                         <label for="password" class="form-label">Password:</label>
-                        <input type="password" class="form-control" id="password" required>
+                        <input type="text" class="form-control" id="password" required>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary">Thiết lập WiFi</button>
@@ -495,7 +514,8 @@
         </div>
 
     </div>
-
+    <!-- Notification container -->
+    <div id="notification" class="notification"></div>
     <script defer src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
         let fetchIntervalId;  // Declare a variable to store the interval ID
@@ -503,8 +523,29 @@
         let elapsedTime = 0;  // Initialize elapsed time
         let elapsedTimeIntervalId;  // Declare a variable to store the elapsed time interval ID
         let processTimeGlobal;
+        // Function to show notification
+        function showNotification(message, duration = 3000, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+
+            // Set the background color based on the type
+            if (type === 'success') {
+                notification.style.backgroundColor = '#4caf50'; // Green
+            } else if (type === 'error') {
+                notification.style.backgroundColor = '#f44336'; // Red
+            }
+
+            notification.classList.add('show');
+
+            // Hide the notification after the specified duration
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, duration);
+        }
 
         document.addEventListener('DOMContentLoaded', function () {
+
+
             fetch('/scan_wifi')
                 .then(response => response.json())
                 .then(data => {
@@ -516,6 +557,7 @@
                             option.textContent = wifi.ssid;
                             ssidSelect.appendChild(option);
                         });
+                        showNotification('Scan Wi-Fi thành công!'); // Show custom notification
                     } else {
                         console.error('Failed to scan Wi-Fi networks:', data.message);
                     }
@@ -1027,6 +1069,14 @@
             const ssid = document.getElementById('ssid').value;
             const password = document.getElementById('password').value;
 
+            // Set a timeout to reload the page after 10 seconds
+            const timeoutId = setTimeout(() => {
+                showNotification('Chuẩn bị restart lại web', 3000, 'error');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000); // Wait 2 seconds before reloading
+            }, 10000); // 10 seconds
+
             fetch('/setup_wifi', {
                 method: 'POST',
                 headers: {
@@ -1036,16 +1086,18 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    const wifiStatus = document.getElementById('wifiStatus');
+                    clearTimeout(timeoutId); // Clear the timeout if the request completes
+                    let wifiError = data.error ? ` ${data.error}` : ''
                     if (data.status === 'success') {
-                        wifiStatus.innerHTML = '<div class="alert alert-success">WiFi đã được thiết lập thành công!</div>';
+                        showNotification('WiFi đã được thiết lập thành công!', 3000);
                     } else {
-                        wifiStatus.innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại: ' + data.message + '</div>';
+                        showNotification('Thiết lập WiFi thất bại: ' + data.message + wifiError, 3000, 'error');
                     }
                 })
                 .catch(error => {
+                    clearTimeout(timeoutId); // Clear the timeout if the request completes
                     console.error('Error:', error);
-                    document.getElementById('wifiStatus').innerHTML = '<div class="alert alert-danger">Thiết lập WiFi thất bại.</div>';
+                    showNotification('Thiết lập WiFi thất bại.', 3000, 'error');
                 });
         });
 
