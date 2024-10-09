@@ -39,9 +39,11 @@ program_status = None
 elapsed_time = 0
 last_five_hues_n = []  # Store the last 5 hues for Tube N
 
-COMPARATOR = 1.4
+C_COMPARATOR = 1.4
+HUE_CONCLUSION_COMPARATOR = 100
 ORANGE_OFFSET = 20
-VALID_PIXEL_THRESHOLD = 80  # Minimum number of valid pixels required
+VALID_PIXEL_THRESHOLD = 20  # Minimum number of valid pixels required
+CONDITION_CHECK_THRESHOLD = 3
 # Directory to save images
 image_dir = '/home/lamp/testtubenew/Test_Image'
 
@@ -89,14 +91,14 @@ capture_interval = 1
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (30, 48, 60, 80),
-    "tube_2": (92, 48, 122, 80),
-    "tube_3": (158, 48, 188, 80),
-    "tube_4": (227, 48, 257, 80),
-    "tube_5": (296, 48, 326, 80),
-    "tube_6": (365, 48, 395, 80),
-    "tube_7": (436, 48, 466, 80),
-    "tube_8": (503, 48, 533, 80)
+    "tube_1": (30, 58, 60, 80),
+    "tube_2": (92, 58, 122, 80),
+    "tube_3": (158, 58, 188, 80),
+    "tube_4": (227, 58, 257, 80),
+    "tube_5": (296, 58, 326, 80),
+    "tube_6": (365, 58, 395, 80),
+    "tube_7": (436, 58, 466, 80),
+    "tube_8": (503, 58, 533, 80)
 }
 CROP_Y1 = 345
 CROP_Y2 = 455
@@ -117,7 +119,6 @@ kf = [KalmanFilter(initial_state_mean=0, n_dim_obs=1,
 
 state_means = [np.array([0]) for _ in range(8)]
 state_covariances = [np.array([[1]]) for _ in range(8)]
-
 
 
 
@@ -157,8 +158,6 @@ def update_hue_and_calculate_average(hue_value):
     return filtered_hues
 
 
-
-
 def detect_test_tube(image):
     results = {}
     
@@ -193,6 +192,7 @@ def detect_test_tube(image):
         # Apply morphological opening to remove small isolated noise
         kernel = np.ones((5, 5), np.uint8)  # Define a 5x5 kernel for morphological operations
         mask_hue = cv2.morphologyEx(mask_hue, cv2.MORPH_OPEN, kernel)
+        mask_hue = cv2.morphologyEx(mask_hue, cv2.MORPH_CLOSE, kernel)
 
         # Mask the hue values outside the desired range and combine with brightness mask
         final_mask = np.logical_and(mask_hue, mask_bright_pixels)
@@ -245,7 +245,6 @@ def detect_test_tube(image):
 
     return results
 
-
 def capture_image_from_camera(output_path='captured_image.jpg'):
     try:
         # Construct the raspistill command
@@ -254,14 +253,14 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-o', output_path,            
             '-w', '1280',
             '-h', '960',
-            '-q', '80',
+            '-q', '100',
             '-t', '1000',
-            '-hf','-vf',
-            '-ss','25000',
-            '-awb','auto',
-            '-ISO','400',
-            '-sa','0'
-            #'-sh','70'
+            '-hf', '-vf',
+            '-ss', '10000',
+            '-awb', 'auto',
+            '-ISO', '800',
+            '-sa', '0',
+            '-sh','40'
             #'-ifx','denoise' # 2 seconds delay before capture
         ]
 
@@ -288,18 +287,17 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
     except Exception as e:
         print(f"Error capturing image: {e}")
         return None
-# Thêm biến global để theo dõi số lần liên tiếp tất cả các tube T đều dương tính
 
-positive_consecutive_count = 0  # Đếm số lần liên tiếp tất cả các tube đều dương tính
-
+positive_tube_counter = [0] * 8  # Initialize counter for 8 tubes
 
 def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time, positive_consecutive_count, total_status, current_status
+    global positive_tube_counter  # Access global counter
+
     table_data = []
-    
     c1 = hue_i / hue_n if hue_i is not None else 0
     c2 = hue_p / hue_n if hue_p is not None else 0
-    all_positive = True  # Biến cờ để kiểm tra tất cả tube T có dương tính hay không
+    all_positive = True  # Variable to check if all tubes are positive
 
     # Add Tube 1 (N) hue value
     table_data.append({
@@ -308,55 +306,66 @@ def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
         "C Value": "",
         "Result": ""
     })
-    # Adding Tube I and Tube P to the table data
+
+    # Adding Tube I and Tube P to the table data (update Hue and C values)
     table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": ""})
     table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": ""})
 
     # Process the other test tubes
     for i, hue_t in enumerate(hue_t_list, start=1):
-        if hue_t is None:  # Skip this tube if hue_t is None
+        if hue_t is None:
             continue
+
         c_value = hue_t / hue_n if hue_t is not None and hue_n != 0 else None
 
-        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
-        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
-            result = "Dương tính"
-        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
-        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
-            result = "Âm tính"
-            all_positive = False  # Nếu có tube âm tính, không được tính là tất cả đều dương tính
-        else:
-            result = ""
-            all_positive = False  # Nếu không rõ kết quả thì cũng không tính là tất cả dương tính
-
+        # Update Hue and C values in the table immediately
         table_data.append({
             "Tube": f"Tube T{i+3}",
             "Hue Value": hue_t,
             "C Value": c_value,
-            "Result": result
+            "Result": ""  # Delay the result for now
         })
 
-    # Kiểm tra nếu tất cả các tube T đều dương tính
+        # Check the conditions for "Dương tính" or "Âm tính" and count how many times they are met
+        if hue_t > HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value >= C_COMPARATOR:
+            result = "Dương tính"
+            positive_tube_counter[i] += 1  # Increment the counter for this tube
+        elif hue_t < HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value < C_COMPARATOR:
+            result = "Âm tính"
+            positive_tube_counter[i] = 0  # Reset the counter if the condition is not met
+            all_positive = False
+        else:
+            result = ""
+            positive_tube_counter[i] = 0  # Reset the counter for unclear results
+            all_positive = False
+
+        # Delay showing the result until half the process time has passed
+        half_process_time = selected_process_time / 2
+        if positive_tube_counter[i] >= CONDITION_CHECK_THRESHOLD and elapsed_time >= half_process_time:
+            # Update the result in the table only after half the process time
+            table_data[-1]["Result"] = result
+
+    # Check if all tubes are positive
     if all_positive:
         positive_consecutive_count += 1
     else:
-        positive_consecutive_count = 0  # Reset nếu có tube không dương tính
+        positive_consecutive_count = 0  # Reset if not all are positive
 
-    # Nếu tất cả tube T dương tính 3 lần liên tiếp, dừng chương trình
-    if positive_consecutive_count >= 3:
-        program_trigger = False  # Dừng chương trình
+    if positive_consecutive_count >= CONDITION_CHECK_THRESHOLD and elapsed_time >= half_process_time:
+        program_trigger = False
         start_time = 0
         elapsed_time = 0
-        positive_consecutive_count = 0  # Reset bộ đếm
-        total_status = "Phản ứng đã dừng, tất cả tube T đều dương tính"
+        positive_consecutive_count = 0  # Reset counter
+        total_result = "Phản ứng đã dừng, tất cả tube T đều dương tính"
         current_status = "Phản ứng kết thúc"
         print("Dừng phản ứng: Tất cả tube T đều dương tính 3 lần liên tiếp")
+        return {
+            "total_result": 'Tất cả mẫu đã dương tính, dừng phản ứng',
+            "table_data": table_data
+        }
 
-    # Determine the total result based on C1 and C2
-    if c1 is not None and c2 is not None:
-        total_result = "Tiếp tục phản ứng" if c1 < COMPARATOR or c2 < COMPARATOR else "Thao tác tốt"
-    else:
-        total_result = "Dữ liệu không đầy đủ."
+    # Return the table data and results
+    total_result = "Tiếp tục phản ứng" 
     
     return {
         "total_result": total_result,
@@ -365,8 +374,10 @@ def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
 
 def program_2_at_t1(hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time, positive_consecutive_count, total_status, current_status
+    global positive_tube_counter  # Access global counter
+
     table_data = []
-    all_positive = True  # Biến cờ để kiểm tra tất cả tube T có dương tính hay không
+    all_positive = True  # Variable to check if all tubes are positive
 
     # Add Tube 1 (N) hue value
     table_data.append({
@@ -380,99 +391,123 @@ def program_2_at_t1(hue_n, hue_t_list):
     for i, hue_t in enumerate(hue_t_list, start=1):
         if hue_t is None:  # Skip this tube if hue_t is None
             continue
-        c_value = hue_t / hue_n if hue_t is not None else None
 
-        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
-        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
-            result = "Dương tính"
-        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
-        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
-            result = "Âm tính"
-            all_positive = False  # Nếu có tube âm tính, không được tính là tất cả đều dương tính
-        else:
-            result = ""
-            all_positive = False  # Nếu không rõ kết quả thì cũng không tính là tất cả dương tính
+        c_value = hue_t / hue_n if hue_n != 0 else None
 
+        # Add Hue and C values to the table immediately
         table_data.append({
             "Tube": f"Tube T{i}",
             "Hue Value": hue_t,
             "C Value": c_value,
-            "Result": result
+            "Result": ""  # Delay the result for now
         })
 
-    # Kiểm tra nếu tất cả các tube T đều dương tính
+        # Check conditions for "Dương tính" or "Âm tính" and count occurrences
+        if hue_t > HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value >= C_COMPARATOR:
+            result = "Dương tính"
+            positive_tube_counter[i] += 1  # Increment the counter for this tube
+        elif hue_t < HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value < C_COMPARATOR:
+            result = "Âm tính"
+            positive_tube_counter[i] = 0  # Reset the counter for negative result
+            all_positive = False  # At least one tube is not positive
+        else:
+            result = ""
+            positive_tube_counter[i] = 0  # Reset the counter for unclear results
+            all_positive = False  # Not all are positive
+
+        # Delay showing the result until half the process time has passed
+        half_process_time = selected_process_time / 2
+        if positive_tube_counter[i] >= CONDITION_CHECK_THRESHOLD and elapsed_time >= half_process_time:
+            # Update the result in the table only after half the process time
+            table_data[-1]["Result"] = result
+
+    # Check if all tubes are positive
     if all_positive:
         positive_consecutive_count += 1
     else:
-        positive_consecutive_count = 0  # Reset nếu có tube không dương tính
+        positive_consecutive_count = 0  # Reset if not all tubes are positive
 
-    # Nếu tất cả tube T dương tính 3 lần liên tiếp, dừng chương trình
-    if positive_consecutive_count >= 3:
-        program_trigger = False  # Dừng chương trình
+    # If all tubes have been positive for CONDITION_CHECK_THRESHOLD cycles, stop the program
+    if positive_consecutive_count >= CONDITION_CHECK_THRESHOLD and elapsed_time >= half_process_time:
+        program_trigger = False  # Stop the program
         start_time = 0
         elapsed_time = 0
-        positive_consecutive_count = 0  # Reset bộ đếm
+        positive_consecutive_count = 0  # Reset counter
         total_status = "Phản ứng đã dừng, tất cả tube T đều dương tính"
         current_status = "Phản ứng kết thúc"
         print("Dừng phản ứng: Tất cả tube T đều dương tính 3 lần liên tiếp")
+        return {
+            "total_result": "Chương trình 2 kết thúc, tất cả mẫu dương tính",
+            "table_data": table_data
+        }
 
     return {
-        "total_result": "Chương trình 2 kết thúc",
+        "total_result": "Chương trình 2 đang chạy",
         "table_data": table_data
     }
 
 def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
     global program_trigger, start_time, elapsed_time
+    global positive_tube_counter  # Use the global counter
+    good_conclusion_flag_c1 = False
+    good_conclusion_flag_c2 = False
    
     c1 = hue_i / hue_n if hue_i is not None else 0
     c2 = hue_p / hue_n if hue_p is not None else 0
-    c_values = {}
     table_data = []
 
-    # Add Tube 1 (N) hue value
+    # Add Tube 1 (N) hue value immediately
     table_data.append({
         "Tube": "Tube 1 (N)",
         "Hue Value": hue_n,
         "C Value": "",
         "Result": ""
     })
-    if c1 >= COMPARATOR and hue_i > 110:
-    # Adding Tube I and Tube P to the table data
-        table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": "Đạt"})
+
+    half_process_time = selected_process_time / 2  # Calculate half of the total process time
+
+    # Update Tube I and Tube P values immediately (Hue and C values)
+    table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": ""})
+    table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": ""})
+
+    # Delay the result based on conditions and half process time
+    if c1 >= C_COMPARATOR and hue_i > HUE_CONCLUSION_COMPARATOR:
+        table_data[1]["Result"] = "Đạt"
+        good_conclusion_flag_c1 = True
     else:
-        table_data.insert(1, {"Tube": "Tube 2 (I)", "Hue Value": hue_i, "C Value": c1, "Result": "Không đạt"})
-    if c2 >= COMPARATOR and hue_p > 110:
-        table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": "Đạt"})
+        table_data[1]["Result"] = "Không đạt"
+        good_conclusion_flag_c1 = False
+
+    if c2 >= C_COMPARATOR and hue_p > HUE_CONCLUSION_COMPARATOR:
+        table_data[2]["Result"] = "Đạt"
+        good_conclusion_flag_c2 = True
     else:
-        table_data.insert(2, {"Tube": "Tube 3 (P)", "Hue Value": hue_p, "C Value": c2, "Result": "Không đạt"})
-    
-    # Process the other test tubes
+        table_data[2]["Result"] = "Không đạt"
+        good_conclusion_flag_c2 = False
+
+    # Update other tubes and delay their result in a similar way
     for i, hue_t in enumerate(hue_t_list, start=1):
-        if hue_t is None:  # Skip this tube if hue_t is None
+        if hue_t is None:
             continue
+
         c_value = hue_t / hue_n if hue_t is not None else None
 
-        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
-        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
-            result = "Dương tính"
-        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
-        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
-            result = "Âm tính"
-        else:
-            result = ""
-
+        # Add Hue and C values immediately
         table_data.append({
             "Tube": f"Tube T{i+3}",
             "Hue Value": hue_t,
             "C Value": c_value,
-            "Result": result
+            "Result": ""  # Delay result
         })
 
-    # Determine the total result based on C1 and C2
-    if c1 is not None and c2 is not None:
-        total_result = "Thao tác không đạt. Kết thúc phản ứng" if c1 < COMPARATOR or c2 < COMPARATOR else "Thao tác tốt. Kết thúc phản ứng"
-    else:
-        total_result = "Dữ liệu không đầy đủ, tube 1 hoặc 2 không có. Kết thúc phản ứng"
+        # Delay the result until conditions are met and half the process time has passed
+        if hue_t > HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value >= C_COMPARATOR:
+            table_data[-1]["Result"] = "Dương tính"
+        else:
+            table_data[-1]["Result"] = "Âm tính"
+
+    total_result = "Thao tác tốt. Kết thúc phản ứng" if (good_conclusion_flag_c1 and good_conclusion_flag_c2) else "Thao tác không đạt. Kết thúc phản ứng"
+    
     return {
         "total_result": total_result,
         "table_data": table_data
@@ -497,11 +532,11 @@ def program_2_at_end(hue_n, hue_t_list):
             continue
         c_value = hue_t / hue_n if hue_t is not None else None
 
-        # Apply new condition: hue > 110 and c_value >= COMPARATOR for positive result
-        if hue_t > 110 and c_value is not None and c_value >= COMPARATOR:
+        # Apply new condition: hue > HUE_CONCLUSION_COMPARATOR and c_value >= C_COMPARATOR for positive result
+        if hue_t >= HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value >= C_COMPARATOR:
             result = "Dương tính"
-        # Apply new condition: hue < 110 and c_value < COMPARATOR for negative result
-        elif hue_t < 110 and c_value is not None and c_value < COMPARATOR:
+        # Apply new condition: hue < HUE_CONCLUSION_COMPARATOR and c_value < C_COMPARATOR for negative result
+        elif hue_t < HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value < C_COMPARATOR:
             result = "Âm tính"
         else:
             result = ""
@@ -517,6 +552,7 @@ def program_2_at_end(hue_n, hue_t_list):
         "total_result": "Chương trình 2 kết thúc",
         "table_data": table_data
     }
+# Thêm biến global để theo dõi số lần liên tiếp tất cả các tube T đều dương tính
 
 def log_program_result_to_csv(program_result):
     global df_program
@@ -562,7 +598,6 @@ def update_hue_n_and_check(hue_n):
         return True  # Condition met: stop the program
 
     return False
-
 
 def capture_and_save():
     global current_status, latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
@@ -651,7 +686,9 @@ def capture_and_save():
                     start_time = time.time()  # Start counting from when the program is triggered
                 elapsed_time = time.time() - start_time
                 print(f'Thời gian chạy: {elapsed_time}')
+                
                 current_status = "Đang chạy"
+
                 # Check if the process time is reached
                 if elapsed_time >= selected_process_time:
                     # Handle end of process time event
@@ -706,9 +743,6 @@ def capture_and_save():
             print(f"Error in capture thread: {e}")
             sleep(5)  # Retry after a delay
 
-
-
-
 # Function to start capture thread
 def start_capture_thread():
     global capture_thread, stop_event, df_hue, df_program
@@ -756,7 +790,64 @@ def stop_capture_thread():
             if os.path.isfile(file_path):
                 os.remove(file_path)
 
-def plot_graph(columns=2):
+# def plot_graph(columns=2):
+#     try:
+#         df = pd.read_csv(hue_csv_file)
+#     except pd.errors.EmptyDataError:
+#         return None  # Return None if the CSV file is empty
+
+#     if df.empty:
+#         return None  # No data available for plotting
+
+#     rows = int(np.ceil(8 / columns))  # Calculate the number of rows
+#     fig = make_subplots(rows=rows, cols=columns, subplot_titles=[f'Tube {i}' for i in range(1, 9)])
+    
+#     for i in range(1, 9):
+#         if f'Tube_{i}_Hue' in df.columns:
+#             row = (i - 1) // columns + 1
+#             col = (i - 1) % columns + 1
+#             fig.add_trace(
+#                 go.Scatter(
+#                     x=df['Timestamp'], 
+#                     y=df[f'Tube_{i}_Hue'], 
+#                     mode='lines', 
+#                     name=f'Tube_{i}_Hue', 
+#                     line=dict(color='orange')
+#                 ), 
+#                 row=row, col=col
+#             )
+    
+#     # Update layout with annotations adjusted to prevent overlap
+#     annotations = []
+#     for i, annotation in enumerate(fig['layout']['annotations']):
+#         annotations.append(
+#             dict(
+#                 text=annotation['text'],
+#                 x=annotation['x'] - (0.2 / columns),  # Adjust the x position based on columns
+#                 y=annotation['y'],  # Adjust the y position to prevent overlap
+#                 xref='paper',
+#                 yref='paper',
+#                 showarrow=False,
+#                 align='left',  # Ensure text is aligned left
+#                 xanchor='left'  # Anchor text to the left
+#             )
+#         )
+    
+#     fig.update_layout(
+#         height=rows * 300,
+#         showlegend=False,
+#         annotations=annotations,
+#         margin=dict(l=5, r=5, t=50, b=10),  # Adjust margins for mobile view
+#         autosize=True,  # Let the plot automatically size itself
+#         plot_bgcolor='lightgrey',  # Set the plot background color to light grey
+#         paper_bgcolor='lightgrey',  # Set the paper (outside plot area) background color to grey
+#     )
+    
+#     # Return data and layout separately
+#     return {"data": fig['data'], "layout": fig['layout']}
+
+
+def plot_graph(columns=2, window_size=5):
     try:
         df = pd.read_csv(hue_csv_file)
     except pd.errors.EmptyDataError:
@@ -767,22 +858,29 @@ def plot_graph(columns=2):
 
     rows = int(np.ceil(8 / columns))  # Calculate the number of rows
     fig = make_subplots(rows=rows, cols=columns, subplot_titles=[f'Tube {i}' for i in range(1, 9)])
-    
+
     for i in range(1, 9):
         if f'Tube_{i}_Hue' in df.columns:
             row = (i - 1) // columns + 1
             col = (i - 1) % columns + 1
+            x_values = pd.to_datetime(df['Timestamp'])
+            y_values = df[f'Tube_{i}_Hue'].fillna(0)  # Fill NaN with 0 or handle NaN values
+
+            # Apply a moving average to smooth the curve
+            y_smooth = y_values.rolling(window=window_size, min_periods=1).mean()
+
+            # Add trace for the smoothed curve
             fig.add_trace(
                 go.Scatter(
-                    x=df['Timestamp'], 
-                    y=df[f'Tube_{i}_Hue'], 
-                    mode='lines', 
-                    name=f'Tube_{i}_Hue', 
+                    x=x_values,
+                    y=y_smooth,
+                    mode='lines',
+                    name=f'Tube_{i}_Hue (Smoothed)',
                     line=dict(color='orange')
-                ), 
+                ),
                 row=row, col=col
             )
-    
+
     # Update layout with annotations adjusted to prevent overlap
     annotations = []
     for i, annotation in enumerate(fig['layout']['annotations']):
@@ -798,7 +896,7 @@ def plot_graph(columns=2):
                 xanchor='left'  # Anchor text to the left
             )
         )
-    
+
     fig.update_layout(
         height=rows * 300,
         showlegend=False,
@@ -808,8 +906,7 @@ def plot_graph(columns=2):
         plot_bgcolor='lightgrey',  # Set the plot background color to light grey
         paper_bgcolor='lightgrey',  # Set the paper (outside plot area) background color to grey
     )
-    
-    # Return data and layout separately
+
     return {"data": fig['data'], "layout": fig['layout']}
 
     
@@ -898,6 +995,16 @@ def plot(columns):
 
 @app.route('/start')
 def start():
+    global positive_consecutive_count, positive_tube_counter
+    global program_result, start_time, elapsed_time
+
+    elapsed_time = 0
+    start_time = 0
+    positive_tube_counter = [0] * 8
+    positive_consecutive_count = 0
+    program_result = {
+                        'total_result': [],
+                        'table_data': []}
     start_capture_thread()
     return jsonify({'status': 'started'})
 
@@ -914,7 +1021,7 @@ def resume():
 @app.route('/reset')
 def reset():
     global program_status,program_trigger, program_result, start_time, selected_process_time, selected_program, selected_t1, elapsed_time
-    
+    global positive_consecutive_count, positive_tube_counter
     stop_capture_thread()
     # start_capture_thread()
     program_trigger = False
@@ -924,6 +1031,9 @@ def reset():
     selected_process_time = None
     elapsed_time = 0
     start_time = 0
+    
+    positive_tube_counter = [0] * 8
+    positive_consecutive_count = 0
     program_result = {
                         'total_result': [],
                         'table_data': []}
@@ -1166,6 +1276,36 @@ def fetch_all_data():
 
     return jsonify(response_data)
 
+# @app.route('/setup_wifi', methods=['POST'])
+# def setup_wifi():
+#     try:
+#         data = request.get_json()
+#         ssid_new = data['ssid']
+#         password_new = data['password']
+
+#         # Kiểm tra và khởi động NetworkManager nếu cần
+#         nm_status = subprocess.run(['systemctl', 'is-active', 'NetworkManager'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#         if nm_status.stdout.decode().strip() != 'active':
+#             print("NetworkManager is not running. Starting NetworkManager...")
+#             subprocess.run(['sudo', 'systemctl', 'start', 'NetworkManager'], check=True)
+#             subprocess.run(['sudo', 'systemctl', 'enable', 'NetworkManager'], check=True)
+#             time.sleep(5)  # Đợi một chút để NetworkManager khởi động
+
+#         # Kết nối tới mạng Wi-Fi mới bằng nmcli
+#         print(f"Connecting to new Wi-Fi: SSID={ssid_new}, PASSWORD={password_new}")
+#         result = subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'connect', ssid_new, 'password', password_new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#         print(f"nmcli stdout: {result.stdout.decode().strip()}")
+#         print(f"nmcli stderr: {result.stderr.decode().strip()}")
+#         if result.returncode == 0:
+#             print("Successfully connected to new Wi-Fi")
+#             return jsonify({'status': 'success', 'message': 'Connected to new Wi-Fi', 'connected_ssid': ssid_new})
+#         else:
+#             print(f"Failed to connect to new Wi-Fi: {result.stderr.decode().strip()}")
+#             return jsonify({'status': 'error', 'message': 'Failed to connect to new Wi-Fi', 'error': result.stderr.decode().strip()})
+
+#     except Exception as e:
+#         print(f"Error: {str(e)}")
+#         return jsonify({'status': 'error', 'message': str(e)})
 @app.route('/setup_wifi', methods=['POST'])
 def setup_wifi():
     try:

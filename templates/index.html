@@ -461,7 +461,7 @@
 
             <div id="result">
                 <h4 class="text-center font-weight-bold">Thời gian: <span id="elapsed_time"> s</span></h4>
-                <h4 class="text-center font-weight-bold">Kết quả: <span id="totalResultText">Chờ lệnh...</span></h4>
+                <h4 class="text-center font-weight-bold">Kết quả: <span id="totalResultText">...</span></h4>
 
                 <table id="resultTable" class="table table-bordered">
                     <thead>
@@ -578,7 +578,7 @@
             console.log("clearTableData")
             const tableBody = document.getElementById('resultTable').querySelector('tbody');
             tableBody.innerHTML = ''; // Clear all rows in the table body
-            document.getElementById('totalResultText').textContent = 'Chờ lệnh...'; // Reset the result text
+            document.getElementById('totalResultText').textContent = '....'; // Reset the result text
             console.log("done clearTableData")
         }
 
@@ -846,13 +846,27 @@
                         }, 1000);  // Resume the elapsed time counter
 
                     }
-                    // else if (!data.program_trigger) {
-                    //     if (elapsedTimeIntervalId) {
-                    //         clearInterval(elapsedTimeIntervalId);  // Pause the elapsed time counter
-                    //         elapsedTimeIntervalId = null;
-                    //         elapsedTime = 0;  // Reset elapsed time to 0
-                    //     }
-                    // }
+                    else if (elapsedTimeIntervalId && data.program_trigger) {
+                        // console.log("khởi động lại elapsedTimeIntervalId", elapsedTimeIntervalId)
+                        elapsedTime = Math.floor(data.elapsed_time)
+                        // const elapsedTimeElement = document.getElementById('elapsed_time');
+                        // if (elapsedTimeElement && data.elapsed_time !== undefined) {
+                        //     elapsedTimeElement.textContent = `${ Math.floor(elapsedTime) } s`;
+                        // }
+                        clearInterval(elapsedTimeIntervalId)
+                        elapsedTimeIntervalId = setInterval(() => {
+                            elapsedTime++;
+                            updateElapsedTime();
+                        }, 1000);  // Resume the elapsed time counter
+
+                    }
+                    else if (!data.program_trigger) {
+                        if (elapsedTimeIntervalId) {
+                            clearInterval(elapsedTimeIntervalId);  // Pause the elapsed time counter
+                            elapsedTimeIntervalId = null;
+                            elapsedTime = 0;  // Reset elapsed time to 0
+                        }
+                    }
                     else {
                         console.log("elapsedTimeIntervalId đã có", elapsedTimeIntervalId)
                     }

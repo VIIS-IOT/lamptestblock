@@ -7,20 +7,24 @@ import subprocess
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (30, 48, 60, 80),
-    "tube_2": (92, 48, 122, 80),
-    "tube_3": (158, 48, 188, 80),
-    "tube_4": (227, 48, 257, 80),
-    "tube_5": (296, 48, 326, 80),
-    "tube_6": (365, 48, 395, 80),
-    "tube_7": (436, 48, 466, 80),
-    "tube_8": (503, 48, 533, 80)
+    "tube_1": (30, 58, 60, 80),
+    "tube_2": (92, 58, 122, 80),
+    "tube_3": (158, 58, 188, 80),
+    "tube_4": (227, 58, 257, 80),
+    "tube_5": (296, 58, 326, 80),
+    "tube_6": (365, 58, 395, 80),
+    "tube_7": (436, 58, 466, 80),
+    "tube_8": (503, 58, 533, 80)
 }
+# CROP_Y1 = 100
+# CROP_Y2 = 900
+# CROP_X1 = 100
+# CROP_X2 = 1200
 CROP_Y1 = 345
 CROP_Y2 = 455
 CROP_X1 = 320
 CROP_X2 = 870
-
+VALID_PIXEL_THRESHOLD = 10
 # Define Kalman filters for each tube (same as your setup)
 from pykalman import KalmanFilter
 kf = [KalmanFilter(initial_state_mean=0, n_dim_obs=1, 
@@ -42,13 +46,18 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-o', output_path,            
             '-w', '1280',
             '-h', '960',
-            '-q', '80',
+            '-q', '100',
             '-t', '1000',
             '-hf','-vf',
-            '-ss','15000',
-            '-awb','auto',
-            '-ISO','400',
-            '-sa','-20'
+            
+            '-ss', '10000',
+            '-awb', 'auto',
+            '-ISO', '800',
+            '-sa', '0',
+            #'-co','-10'
+            '-sh','40'
+            #'-br','55'
+            #'-ifx','denoise' # 2 seconds delay before capture
         ]
 
         # Use subprocess.Popen for better control
@@ -91,15 +100,16 @@ def detect_test_tube(image, output_dir="tube_images"):
         hsv_image = cv2.cvtColor(blur_sub_image, cv2.COLOR_BGR2HSV)
         hue_channel = hsv_image[:, :, 0]
         value_channel = hsv_image[:, :, 2]
+        
+        # Count total pixels in the sub-image
+        total_pixels = hue_channel.size
 
         # Convert the hue and value channels to grayscale for visualization
-        hue_before_mask = cv2.normalize(hue_channel, None, 0, 255, cv2.NORM_MINMAX)
         value_gray = cv2.normalize(value_channel, None, 0, 255, cv2.NORM_MINMAX)
 
         # Save the V (value) channel grayscale image
         value_path = os.path.join(output_dir, f'{tube}_value_channel.jpg')
         cv2.imwrite(value_path, value_gray)
-        print(f"Saved value channel image for {tube} at {value_path}")
 
         # Masking the V channel (to filter out bright areas)
         mask_bright_pixels = value_channel < BRIGHTNESS_THRESHOLD
@@ -108,13 +118,8 @@ def detect_test_tube(image, output_dir="tube_images"):
         # Convert hue_channel to the correct scale (0-360 degrees)
         hue_channel_filtered = hue_channel_filtered.astype(float) * 2
 
-        # Save the hue before masking (for debugging purposes)
-        hue_before_mask_path = os.path.join(output_dir, f'{tube}_hue_before_mask.jpg')
-        cv2.imwrite(hue_before_mask_path, hue_before_mask)
-        print(f"Saved hue before mask image for {tube} at {hue_before_mask_path}")
-
         # Filter hues in red-yellow range
-        lower_bound_1 = 280
+        lower_bound_1 = 270
         upper_bound_1 = 360
         lower_bound_2 = 0
         upper_bound_2 = 90
@@ -123,18 +128,19 @@ def detect_test_tube(image, output_dir="tube_images"):
         mask_hue = ((hue_channel_filtered >= lower_bound_1) | (hue_channel_filtered <= upper_bound_2)).astype(np.uint8)
 
         # Apply morphological opening to remove small isolated noise
-        kernel = np.ones((5, 5), np.uint8)  # Define a 3x3 kernel for morphological operations
+        kernel = np.ones((5, 5), np.uint8)  
         mask_hue = cv2.morphologyEx(mask_hue, cv2.MORPH_OPEN, kernel)
-
+        mask_hue = cv2.morphologyEx(mask_hue, cv2.MORPH_CLOSE, kernel)
         # Apply the brightness mask and the filtered hue mask
         final_mask = np.logical_and(mask_hue, mask_bright_pixels)
         masked_hue = np.ma.masked_array(hue_channel_filtered, mask=~final_mask)
 
+        # Count valid pixels in the hue range
         valid_pixel_count = np.ma.count(masked_hue)
-        if valid_pixel_count < 10:  # Minimum pixel threshold
+
+        if valid_pixel_count < VALID_PIXEL_THRESHOLD:  # Minimum pixel threshold
             mean_scaled_hue = None
         else:
-            # Scale hue values for the specified ranges
             scaled_hue = np.zeros_like(masked_hue)
             for y in range(masked_hue.shape[0]):
                 for x in range(masked_hue.shape[1]):
@@ -146,6 +152,7 @@ def detect_test_tube(image, output_dir="tube_images"):
                     else:
                         scaled_hue[y, x] = np.ma.masked
 
+            print(f'Hue value of tube {tube}: {scaled_hue}')
             mean_scaled_hue = scaled_hue.mean()
 
             # Apply Kalman filter
@@ -160,10 +167,13 @@ def detect_test_tube(image, output_dir="tube_images"):
             hue_after_mask = cv2.normalize(masked_hue.filled(0), None, 0, 255, cv2.NORM_MINMAX)
             hue_after_mask_path = os.path.join(output_dir, f'{tube}_hue_after_mask_scale.jpg')
             cv2.imwrite(hue_after_mask_path, hue_after_mask)
-            print(f"Saved hue after mask and scaling image for {tube} at {hue_after_mask_path}")
 
-        # Store the result
-        results[tube] = {"hue": mean_scaled_hue}
+        # Store the result with total pixels and valid pixel count
+        results[tube] = {
+            "hue": mean_scaled_hue,
+            "total_pixels": total_pixels,
+            "valid_pixels": valid_pixel_count
+        }
 
         # Display the tube regions and hue on the image
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 1)
