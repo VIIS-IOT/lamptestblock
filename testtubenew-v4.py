@@ -39,10 +39,10 @@ program_status = None
 elapsed_time = 0
 last_five_hues_n = []  # Store the last 5 hues for Tube N
 
-COMPARATOR = 1.4
-HUE_CONCLUSION_COMPARATOR = 100
+C_COMPARATOR = 1.4
+HUE_CONCLUSION_COMPARATOR = 110
 ORANGE_OFFSET = 20
-VALID_PIXEL_THRESHOLD = 25  # Minimum number of valid pixels required
+VALID_PIXEL_THRESHOLD = 30  # Minimum number of valid pixels required
 CONDITION_CHECK_THRESHOLD = 3
 # Directory to save images
 image_dir = '/home/lamp/testtubenew/Test_Image'
@@ -91,14 +91,14 @@ capture_interval = 1
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (31, 60, 91, 120),
-    "tube_2": (153, 60, 213, 120),
-    "tube_3": (273, 57, 335, 117),
-    "tube_4": (402, 53, 468, 101),
-    "tube_5": (534, 53, 602, 104),
-    "tube_6": (670, 55, 728, 102),
-    "tube_7": (800, 55, 860, 110),
-    "tube_8": (922, 55, 982, 110)
+    "tube_1": (31, 75, 91, 110),
+    "tube_2": (153, 75, 213, 110),
+    "tube_3": (273, 65, 335, 107),
+    "tube_4": (402, 65, 468, 100),
+    "tube_5": (534, 65, 602, 100),
+    "tube_6": (670, 65, 728, 100),
+    "tube_7": (800, 75, 860, 110),
+    "tube_8": (922, 75, 982, 110)
 }
 CROP_Y1 = 176
 CROP_Y2 = 362
@@ -376,10 +376,30 @@ def program_1_at_t1(hue_i, hue_p, hue_n, hue_t_list):
         total_result = "Phản ứng đã dừng, tất cả tube T đều dương tính"
         current_status = "Phản ứng kết thúc"
         print("Dừng phản ứng: Tất cả tube T đều dương tính 3 lần liên tiếp")
+        if c1 >= C_COMPARATOR and hue_i > HUE_CONCLUSION_COMPARATOR:
+            table_data[1]["Result"] = "Đạt"
+            # good_conclusion_flag_c1 = True
+        else:
+            table_data[1]["Result"] = "Không đạt"
+            # good_conclusion_flag_c1 = False
+
+        if c2 >= C_COMPARATOR and hue_p > HUE_CONCLUSION_COMPARATOR:
+            table_data[2]["Result"] = "Đạt"
+            # good_conclusion_flag_c2 = True
+        else:
+            table_data[2]["Result"] = "Không đạt"
+            # good_conclusion_flag_c2 = False
+        if hue_n < HUE_CONCLUSION_COMPARATOR:
+            table_data[0]["Result"] = "Đạt"
+        else:
+            table_data[0]["Result"] = "Không đạt"
+
+
         return {
             "total_result": 'Tất cả mẫu đã dương tính, dừng phản ứng',
             "table_data": table_data
         }
+    print(f"Table Data: {table_data}")
 
     # Return the table data and results
     total_result = "Tiếp tục phản ứng" 
@@ -453,10 +473,15 @@ def program_2_at_t1(hue_n, hue_t_list):
         total_status = "Phản ứng đã dừng, tất cả tube T đều dương tính"
         current_status = "Phản ứng kết thúc"
         print("Dừng phản ứng: Tất cả tube T đều dương tính 3 lần liên tiếp")
+        if hue_n < HUE_CONCLUSION_COMPARATOR:
+            table_data[0]["Result"] = "Đạt"
+        else:
+            table_data[0]["Result"] = "Không đạt"
         return {
             "total_result": "Chương trình 2 kết thúc, tất cả mẫu dương tính",
             "table_data": table_data
         }
+    print(f"Table Data: {table_data}")
 
     return {
         "total_result": "Chương trình 2 đang chạy",
@@ -474,12 +499,20 @@ def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
     table_data = []
 
     # Add Tube 1 (N) hue value immediately
-    table_data.append({
-        "Tube": "Tube 1 (N)",
-        "Hue Value": hue_n,
-        "C Value": "",
-        "Result": ""
-    })
+    if hue_n < HUE_CONCLUSION_COMPARATOR:
+        table_data.append({
+            "Tube": "Tube 1 (N)",
+            "Hue Value": hue_n,
+            "C Value": "",
+            "Result": "Đạt"
+        })
+    else: 
+        table_data.append({
+            "Tube": "Tube 1 (N)",
+            "Hue Value": hue_n,
+            "C Value": "",
+            "Result": "Không đạt"
+        })
 
     half_process_time = selected_process_time / 2  # Calculate half of the total process time
 
@@ -536,12 +569,20 @@ def program_2_at_end(hue_n, hue_t_list):
     table_data = []
 
     # Add Tube 1 (N) hue value
-    table_data.append({
-        "Tube": "Tube 1 (N)",
-        "Hue Value": hue_n,
-        "C Value": "",
-        "Result": ""
-    })
+    if hue_n < HUE_CONCLUSION_COMPARATOR:
+        table_data.append({
+            "Tube": "Tube 1 (N)",
+            "Hue Value": hue_n,
+            "C Value": "",
+            "Result": "Đạt"
+        })
+    else: 
+        table_data.append({
+            "Tube": "Tube 1 (N)",
+            "Hue Value": hue_n,
+            "C Value": "",
+            "Result": "Không đạt"
+        })
 
     # Process tubes T1 to T7
     for i, hue_t in enumerate(hue_t_list, start=1):
@@ -825,8 +866,10 @@ def plot_graph(columns=2, window_size=5):
             row = (i - 1) // columns + 1
             col = (i - 1) % columns + 1
             x_values = pd.to_datetime(df['Timestamp'])
-            y_values = df[f'Tube_{i}_Hue'].fillna(0)  # Fill NaN with 0 or handle NaN values
 
+            # Convert y_values to numeric, coercing errors and handling NaN values
+            y_values = pd.to_numeric(df[f'Tube_{i}_Hue'], errors='coerce').fillna(0)  # Convert to numeric and handle NaN
+            
             # Apply a moving average to smooth the curve
             y_smooth = y_values.rolling(window=window_size, min_periods=1).mean()
 
@@ -869,7 +912,7 @@ def plot_graph(columns=2, window_size=5):
     )
 
     return {"data": fig['data'], "layout": fig['layout']}
-    
+ 
 def handle_temperature(action, value=None):
     global serial_lock
 
