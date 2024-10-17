@@ -7,24 +7,20 @@ import subprocess
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (30, 58, 60, 80),
-    "tube_2": (92, 58, 122, 80),
-    "tube_3": (158, 58, 188, 80),
-    "tube_4": (227, 58, 257, 80),
-    "tube_5": (296, 58, 326, 80),
-    "tube_6": (365, 58, 395, 80),
-    "tube_7": (436, 58, 466, 80),
-    "tube_8": (503, 58, 533, 80)
+    "tube_1": (25, 55, 50, 72),
+    "tube_2": (87, 55, 112, 72),
+    "tube_3": (148, 52, 173, 70),
+    "tube_4": (217, 48, 242, 70),
+    "tube_5": (282, 47, 311, 66),
+    "tube_6": (350, 47, 375, 66),
+    "tube_7": (413, 55, 441, 72),
+    "tube_8": (480, 55, 505, 72)
 }
-# CROP_Y1 = 100
-# CROP_Y2 = 900
-# CROP_X1 = 100
-# CROP_X2 = 1200
-CROP_Y1 = 345
-CROP_Y2 = 455
-CROP_X1 = 320
-CROP_X2 = 870
-VALID_PIXEL_THRESHOLD = 10
+CROP_Y1 = 370
+CROP_Y2 = 470
+CROP_X1 = 290
+CROP_X2 = 840
+VALID_PIXEL_THRESHOLD = 20
 # Define Kalman filters for each tube (same as your setup)
 from pykalman import KalmanFilter
 kf = [KalmanFilter(initial_state_mean=0, n_dim_obs=1, 
@@ -52,10 +48,10 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             
             '-ss', '10000',
             '-awb', 'auto',
-            '-ISO', '800',
-            '-sa', '0',
+            '-ISO', '400',
+            # '-sa', '0',
             #'-co','-10'
-            '-sh','40'
+            # '-sh','40'
             #'-br','55'
             #'-ifx','denoise' # 2 seconds delay before capture
         ]

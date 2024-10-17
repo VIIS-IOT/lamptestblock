@@ -32,6 +32,16 @@
             display: block;
         }
 
+        .notification.success {
+            background-color: #4caf50;
+            /* Green */
+        }
+
+        .notification.error {
+            background-color: #5862c0;
+            /* Red */
+        }
+
         @font-face {
             font-family: 'Roboto';
             src: url('/static/font/poppins/Poppins-Regular.ttf') format('truetype');
@@ -348,20 +358,52 @@
 
 <body>
     <div class="container">
+        <!-- Authentication Modal -->
+        <div id="authModal" class="modal" tabindex="-1" role="dialog" style="display: none;">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Authentication</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" class="form-control">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="authenticate()">Login</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <h1 class="mb-4 text-center">LAMP: Trích xuất giá trị màu sắc HUE từ ống nghiệm</h1>
 
         <!-- Button Group -->
         <div class="section-divider">
             <div id="controls" class="d-flex flex-wrap justify-content-center btn-group-custom">
-                <button class="btn btn-primary mb-2 mx-1" onclick="changeState('Running', startCapture)">Bắt
+                <button class="btn btn-primary mb-2 mx-1 editable" disabled
+                    onclick="changeState('Running', startCapture)">Bắt
                     đầu</button>
-                <button class="btn btn-warning mb-2 mx-1" onclick="changeState('Pause', pauseCapture)">Tạm dừng</button>
-                <button class="btn btn-success mb-2 mx-1" onclick="changeState('Resume', resumeCapture)">Tiếp
+                <button class="btn btn-warning mb-2 mx-1 editable" disabled
+                    onclick="changeState('Pause', pauseCapture)">Tạm
+                    dừng</button>
+                <button class="btn btn-success mb-2 mx-1 editable" disabled
+                    onclick="changeState('Resume', resumeCapture)">Tiếp
                     tục</button>
-                <button class="btn btn-danger mb-2 mx-1" onclick="changeState('Reset', resetCapture)">Làm lại</button>
-                <button class="btn btn-info mb-2 mx-1" onclick="changeState('Downloading CSV', downloadCSV)">Tải kết
+                <button class="btn btn-danger mb-2 mx-1 editable" disabled
+                    onclick="changeState('Reset', resetCapture)">Làm
+                    lại</button>
+                <button class="btn btn-info mb-2 mx-1 editable" disabled
+                    onclick="changeState('Downloading CSV', downloadCSV)">Tải kết
                     quả</button>
-                <button class="btn btn-info mb-2 mx-1" onclick="changeState('Downloading Image', downloadImages)">Tải
+                <button class="btn btn-info mb-2 mx-1 editable" disabled
+                    onclick="changeState('Downloading Image', downloadImages)">Tải
                     ảnh</button>
             </div>
         </div>
@@ -380,13 +422,12 @@
                         <label for="setTemperature" class="input-label" style="flex: 0 0 48%; font-weight: bold;">Cài
                             giá trị mới:</label>
                         <div class="input-group" style="flex: 1;">
-                            <input type="number" id="setTemperature" class="form-control" min="0" step="1" value="25"
-                                style="margin-right: 10px;">
+                            <input type="number" id="setTemperature" class="form-control editable" min="0" step="1"
+                                value="25" style="margin-right: 10px;" disabled>
                             <div class="input-group-append btn-group-custom">
-                                <button class="btn btn-secondary btn-group-custom" onclick="setTemperature()">Cập
-                                    nhật</button>
+                                <button class="btn btn-secondary btn-group-custom editable" onclick="setTemperature()"
+                                    disabled>Cập nhật</button>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -403,13 +444,12 @@
                     <label for="programSelect" class="input-group-text neumorphism-label"
                         style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Chương
                         trình:</label>
-                    <select id="programSelect" class="form-select" style="flex: 1; max-width: 52%; padding: 10px; border-radius: 0px; border: none; 
-                               box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.1), -6px -6px 12px rgba(255, 255, 255, 0.7); 
-                               background-color: #e0e0e0; min-width: 0;">
+                    <select id="programSelect" class="form-select editable"
+                        style="flex: 1; max-width: 52%; padding: 10px; border-radius: 0px; border: none; box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.1), -6px -6px 12px rgba(255, 255, 255, 0.7); background-color: #e0e0e0; min-width: 0;"
+                        disabled>
                         <option value="1">1: Làm quen quy trình</option>
                         <option value="2">2: Chạy thử mẫu</option>
                     </select>
-
                 </div>
 
                 <div class="input-group mb-3"
@@ -417,8 +457,8 @@
                     <label for="temperature" class="input-group-text neumorphism-label"
                         style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Cài nhiệt độ
                         (C):</label>
-                    <input type="number" id="temperature" class="form-control" value="65"
-                        style="flex: 1; max-width: 52%;">
+                    <input type="number" id="temperature" class="form-control editable" value="65"
+                        style="flex: 1; max-width: 52%;" disabled>
                 </div>
 
                 <div class="input-group mb-3"
@@ -426,21 +466,18 @@
                     <label for="checkTime" class="input-group-text neumorphism-label"
                         style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;" hidden>Cài T1
                         (s):</label>
-                    <input type="number" id="checkTime" class="form-control" value="30" style="flex: 1; max-width: 52%;"
-                        hidden>
+                    <input type="number" id="checkTime" class="form-control editable" value="30"
+                        style="flex: 1; max-width: 52%;" hidden disabled>
                 </div>
 
                 <div class="input-group mb-3"
                     style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
                     <label for="processTime" class="input-group-text neumorphism-label"
-                        style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Thời gian
-                        chạy (s):</label>
-                    <input type="number" id="processTime" class="form-control" value="1800"
-                        style="flex: 1; max-width: 52%;">
+                        style="flex: 0 0 48%; max-width: 48%; text-align: right; white-space: nowrap;">Thời gian chạy
+                        (s):</label>
+                    <input type="number" id="processTime" class="form-control editable" value="1800"
+                        style="flex: 1; max-width: 52%;" disabled>
                 </div>
-
-
-                <!-- <button class="btn btn-primary" onclick="runProgram()">Chạy chương trình</button> -->
             </div>
         </div>
 
@@ -508,7 +545,7 @@
                         <input type="text" class="form-control" id="password" required>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">Thiết lập WiFi</button>
+                <button type="submit" class="btn btn-primary editable" disabled>Thiết lập WiFi</button>
             </form>
             <div id="wifiStatus" class="mt-3"></div>
         </div>
@@ -518,6 +555,22 @@
     <div id="notification" class="notification"></div>
     <script defer src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
+
+
+        // function showNotification(message, type) {
+        //     const notification = document.createElement('div');
+        //     notification.className = 'notification';
+        //     notification.classList.add(type);
+        //     notification.innerText = message;
+        //     document.body.appendChild(notification);
+        //     notification.style.display = 'block';
+
+        //     setTimeout(() => {
+        //         notification.style.display = 'none';
+        //         document.body.removeChild(notification);
+        //     }, 3000);
+        // }
+
         let fetchIntervalId;  // Declare a variable to store the interval ID
         let program_trigger = false;
         let elapsedTime = 0;  // Initialize elapsed time
@@ -525,6 +578,7 @@
         let processTimeGlobal;
         // Function to show notification
         function showNotification(message, duration = 3000, type = 'success') {
+            console.log("Notification triggered:", message, type); // Debugging line
             const notification = document.getElementById('notification');
             notification.textContent = message;
 
@@ -532,7 +586,7 @@
             if (type === 'success') {
                 notification.style.backgroundColor = '#4caf50'; // Green
             } else if (type === 'error') {
-                notification.style.backgroundColor = '#f44336'; // Red
+                notification.style.backgroundColor = '#50b2dc'; // Red
             }
 
             notification.classList.add('show');
@@ -543,8 +597,32 @@
             }, duration);
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
+        function authenticate() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
 
+            if (username === 'admin' && password === 'admin@123') {
+                // Hide the modal
+                document.getElementById('authModal').style.display = 'none';
+
+                // Enable the editable sections
+                document.querySelectorAll('.editable').forEach(function (element) {
+                    element.disabled = false;
+                });
+
+                // Show success notification
+                showNotification('Bạn đã đăng nhập với quyền admin', 3000, 'success');
+            } else {
+                // Hide the modal
+                document.getElementById('authModal').style.display = 'none';
+
+                // Show read-only notification
+                showNotification('Bạn đã đăng nhập với quyền chỉ xem', 3000, 'error');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            // Show the authentication modal on page load
+            document.getElementById('authModal').style.display = 'block';
 
             fetch('/scan_wifi')
                 .then(response => response.json())
