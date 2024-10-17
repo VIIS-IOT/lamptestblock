@@ -590,7 +590,7 @@ def update_hue_n_and_check(hue_n):
 
     return False
 
-# def capture_and_save():
+def capture_and_save():
 #     global current_status, latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
 #     start_time = 0
 #     capture_counter = 0
@@ -736,151 +736,8 @@ def update_hue_n_and_check(hue_n):
 #             print(f"Error in capture thread: {e}")
 #             sleep(5)  # Retry after a delay
 
-import math
 
-def logistic_function(t, L, k, t0):
-    """Logistic function to simulate PCR-like curve."""
-    return L / (1 + math.exp(-k * (t - t0)))
 
-def capture_and_save():
-    global current_status, latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
-    start_time = 0
-    capture_counter = 0
-    capture_interval_seconds = 15  # Time in seconds between each capture
-    t1_interval_counter = 0
-
-    # Maximum process time set to 900s
-    process_duration = 900
-    L = 140  # Maximum value for hue increase
-    t0 = process_duration / 2  # Midpoint when the rapid increase starts
-    k = 0.03  # Steepness of the sigmoid curve (adjust for sharper or slower transitions)
-
-    while not stop_event.is_set():
-        pause_event.wait()
-
-        try:
-            if program_trigger == True:
-                if capture_counter >= capture_interval_seconds:
-                    capture_counter = 0  # Reset the counter after capturing
-
-                    # Simulating the hue data for each tube
-                    timestamp = datetime.datetime.now()
-
-                    # Elapsed time fraction (t) for hue progression (normalized from 0 to 1)
-                    t = min(elapsed_time / process_duration, 1)
-
-                    # Simulating Tube N with constant hue (between 50-55)
-                    hue_n = random.uniform(50, 55)
-
-                    # Simulating Tube I and P hues (PCR-like sigmoid curve from 50 to 140)
-                    hue_i = logistic_function(elapsed_time, L, k, t0) + random.uniform(-5, 5)  # Add some noise
-                    hue_p = logistic_function(elapsed_time, L, k, t0) + random.uniform(-5, 5)
-
-                    # Simulating Tube T4 with random values (50-80)
-                    hue_t4 = random.uniform(50, 80)
-
-                    # Simulating Tubes T5 to T8 (PCR-like sigmoid curve from 50 to 130)
-                    hue_t5 = logistic_function(elapsed_time, 130, k, t0) + random.uniform(-5, 5)
-                    hue_t6 = logistic_function(elapsed_time, 130, k, t0) + random.uniform(-5, 5)
-                    hue_t7 = logistic_function(elapsed_time, 130, k, t0) + random.uniform(-5, 5)
-                    hue_t8 = logistic_function(elapsed_time, 130, k, t0) + random.uniform(-5, 5)
-
-                    # Prepare the fake hue values in a dictionary
-                    hue_value = {
-                        'tube_1': {'hue': hue_n},
-                        'tube_2': {'hue': hue_i},
-                        'tube_3': {'hue': hue_p},
-                        'tube_4': {'hue': hue_t4},
-                        'tube_5': {'hue': hue_t5},
-                        'tube_6': {'hue': hue_t6},
-                        'tube_7': {'hue': hue_t7},
-                        'tube_8': {'hue': hue_t8}
-                    }
-
-                    # Saving the hue values into a CSV
-                    row_hue = [timestamp] + [hue_value[f'tube_{i}']["hue"] for i in range(1, 9)]
-                    df_hue.loc[len(df_hue)] = row_hue
-                    df_hue.to_csv(hue_csv_file, index=False)
-
-                    # You can optionally display or save the image simulation here, but we'll skip that step since no real images are being captured
-                    print(f"Simulated hue values: {hue_value}")
-
-                    # Process the program logic using these fake values
-                    if selected_program == 1:
-                        program_return = program_1_at_t1(
-                            hue_value['tube_2']['hue'],  # tube_I
-                            hue_value['tube_3']['hue'],  # tube_P
-                            hue_value['tube_1']['hue'],  # tube_N
-                            [hue_value[f'tube_{i}']['hue'] for i in range(4, 9)]  # tubes T4 to T8
-                        )
-                        program_result = {
-                            'total_result': program_return['total_result'],
-                            'table_data': program_return['table_data']
-                        }
-                    elif selected_program == 2:
-                        program_return = program_2_at_t1(
-                            hue_value['tube_1']['hue'],  # tube_N
-                            [hue_value[f'tube_{i}']['hue'] for i in range(2, 9)]  # tubes T1 to T7
-                        )
-                        program_result = {
-                            'total_result': "Chương trình 2 đang chạy",
-                            'table_data': program_return['table_data']
-                        }
-
-                    # Update elapsed time
-                    if start_time == 0:
-                        start_time = time.time()  # Start counting from when the program is triggered
-                    elapsed_time = time.time() - start_time
-                    print(f'Thời gian chạy: {elapsed_time}')
-
-                else:
-                    capture_counter += 1  # Increment the counter
-
-                # Check if the process time is reached
-                if elapsed_time >= selected_process_time:
-                    if selected_program == 1:
-                        program_return = program_1_at_end(
-                            hue_value['tube_2']['hue'],  # tube_I
-                            hue_value['tube_3']['hue'],  # tube_P
-                            hue_value['tube_1']['hue'],  # tube_N
-                            [hue_value[f'tube_{i}']['hue'] for i in range(4, 9)]  # tubes T4 to T8
-                        )
-                        program_result = {
-                            'total_result': program_return['total_result'],
-                            'table_data': program_return['table_data']
-                        }
-                    elif selected_program == 2:
-                        program_return = program_2_at_end(
-                            hue_value['tube_1']['hue'],  # tube_N
-                            [hue_value[f'tube_{i}']['hue'] for i in range(2, 9)]  # tubes T1 to T7
-                        )
-                        program_result = {
-                            'total_result': "Chương trình 2 đã kết thúc",
-                            'table_data': program_return['table_data']
-                        }
-
-                    current_status = "Chương trình kết thúc"
-                    log_program_result_to_csv(program_result)
-
-                    program_trigger = False
-                    start_time = 0
-                    elapsed_time = 0
-
-                t1_interval_counter += 1  # Track time for T1 intervals
-                if t1_interval_counter >= selected_t1:
-                    log_program_result_to_csv(program_result)
-                    t1_interval_counter = 0
-
-                sleep(capture_interval)
-
-            else:  # program_trigger is False
-                sleep(5)  # Increase sleep time if no program is running
-                current_status = "Đang chờ"
-
-        except Exception as e:
-            current_status = "Chương trình gặp lỗi, hãy thử lại"
-            print(f"Error in capture thread: {e}")
-            sleep(5)  # Retry after a delay
 
 
 # Function to start capture thread
