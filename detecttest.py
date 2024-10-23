@@ -39,10 +39,10 @@ def capture_image_from_camera(output_path='captured_image.jpg'):
             '-q', '80',
             '-t', '1000',
             '-hf', '-vf',
-            '-ss', '40000',
+            '-ss', '25000',
             '-awb', 'auto',
-            '-ISO', '300',
-            '-sa', '-40'
+            '-ISO', '400',
+            '-sa', '-30'
         ]
 
         # Use subprocess.Popen for better control
