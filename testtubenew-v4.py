@@ -40,7 +40,7 @@ elapsed_time = 0
 last_five_hues_n = []  # Store the last 5 hues for Tube N
 
 C_COMPARATOR = 1.4
-HUE_CONCLUSION_COMPARATOR = 110
+HUE_CONCLUSION_COMPARATOR = 100
 ORANGE_OFFSET = 20
 VALID_PIXEL_THRESHOLD = 30  # Minimum number of valid pixels required
 CONDITION_CHECK_THRESHOLD = 3
@@ -789,70 +789,6 @@ def stop_capture_thread():
             if os.path.isfile(file_path):
                 os.remove(file_path)
 
-# def plot_graph(columns=2, window_size=5):
-#     try:
-#         df = pd.read_csv(hue_csv_file)
-#     except pd.errors.EmptyDataError:
-#         return None  # Return None if the CSV file is empty
-
-#     if df.empty:
-#         return None  # No data available for plotting
-
-#     rows = int(np.ceil(8 / columns))  # Calculate the number of rows
-#     fig = make_subplots(rows=rows, cols=columns, subplot_titles=[f'Tube {i}' for i in range(1, 9)])
-
-#     for i in range(1, 9):
-#         if f'Tube_{i}_Hue' in df.columns:
-#             row = (i - 1) // columns + 1
-#             col = (i - 1) % columns + 1
-#             x_values = pd.to_datetime(df['Timestamp'])
-
-#             # Convert y_values to numeric, coercing errors and handling NaN values
-#             y_values = pd.to_numeric(df[f'Tube_{i}_Hue'], errors='coerce').fillna(0)  # Convert to numeric and handle NaN
-            
-#             # Apply a moving average to smooth the curve
-#             y_smooth = y_values.rolling(window=window_size, min_periods=1).mean()
-
-#             # Add trace for the smoothed curve
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=x_values,
-#                     y=y_smooth,
-#                     mode='lines',
-#                     name=f'Tube_{i}_Hue (Smoothed)',
-#                     line=dict(color='orange')
-#                 ),
-#                 row=row, col=col
-#             )
-
-#     # Update layout with annotations adjusted to prevent overlap
-#     annotations = []
-#     for i, annotation in enumerate(fig['layout']['annotations']):
-#         annotations.append(
-#             dict(
-#                 text=annotation['text'],
-#                 x=annotation['x'] - (0.2 / columns),  # Adjust the x position based on columns
-#                 y=annotation['y'],  # Adjust the y position to prevent overlap
-#                 xref='paper',
-#                 yref='paper',
-#                 showarrow=False,
-#                 align='left',  # Ensure text is aligned left
-#                 xanchor='left'  # Anchor text to the left
-#             )
-#         )
-#     fig.update_yaxes(range=[0, 170], row='all', col='all')  # This sets Y-axis range across all subplots
-
-#     fig.update_layout(
-#         height=rows * 300,
-#         showlegend=False,
-#         annotations=annotations,
-#         margin=dict(l=5, r=5, t=50, b=10),  # Adjust margins for mobile view
-#         autosize=True,  # Let the plot automatically size itself
-#         plot_bgcolor='lightgrey',  # Set the plot background color to light grey
-#         paper_bgcolor='lightgrey',  # Set the paper (outside plot area) background color to grey
-#     )
-
-#     return {"data": fig['data'], "layout": fig['layout']}
 
 def plot_graph(columns=2, window_size=5):
     try:
@@ -1097,7 +1033,7 @@ def download_CSV():
 @app.route('/download')
 def download():
     # Get today's date in the format YYYYMMDD
-    today = datetime.now().strftime("%Y%m%d")
+    today = datetime.datetime.now().strftime("%Y%m%d")
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(image_dir):
