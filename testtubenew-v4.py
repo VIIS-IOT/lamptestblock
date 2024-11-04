@@ -91,14 +91,14 @@ capture_interval = 1
 
 #Regions for each test tube in the image
 regions = {
-    "tube_1": (25, 55, 50, 72),
-    "tube_2": (87, 55, 112, 72),
-    "tube_3": (148, 52, 173, 70),
-    "tube_4": (217, 48, 242, 70),
-    "tube_5": (282, 47, 311, 66),
-    "tube_6": (350, 47, 375, 66),
-    "tube_7": (413, 55, 441, 72),
-    "tube_8": (480, 55, 505, 72)
+    "tube_1": (20, 55, 45, 72),
+    "tube_2": (80, 55, 105, 72),
+    "tube_3": (143, 52, 167, 70),
+    "tube_4": (210, 48, 235, 70),
+    "tube_5": (276, 47, 305, 66),
+    "tube_6": (345, 47, 370, 66),
+    "tube_7": (413, 51, 441, 72),
+    "tube_8": (480, 51, 505, 72)
 }
 CROP_Y1 = 370
 CROP_Y2 = 470
@@ -591,150 +591,150 @@ def update_hue_n_and_check(hue_n):
     return False
 
 def capture_and_save():
-#     global current_status, latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
-#     start_time = 0
-#     capture_counter = 0
-#     capture_interval_seconds = 15  # Time in seconds between each capture
-#     t1_interval_counter = 0
+    global current_status, latest_image_path, capture_interval, program_trigger, program_result, elapsed_time, start_time, selected_process_time, selected_program, selected_t1
+    start_time = 0
+    capture_counter = 0
+    capture_interval_seconds = 15  # Time in seconds between each capture
+    t1_interval_counter = 0
 
-#     while not stop_event.is_set():
-#         pause_event.wait()
+    while not stop_event.is_set():
+        pause_event.wait()
         
-#         try:
-#             if program_trigger == True:
-#                 if capture_counter >= capture_interval_seconds:
-#                     capture_counter = 0  # Reset the counter after capturing
+        try:
+            if program_trigger == True:
+                if capture_counter >= capture_interval_seconds:
+                    capture_counter = 0  # Reset the counter after capturing
 
-#                     # Always capture and process the image, regardless of whether a program is triggered
-#                     image = capture_image_from_camera()
-#                     if image is None:
-#                         raise ValueError("Failed to capture image")
-#                     image_corrected = region_based_correction(image)
+                    # Always capture and process the image, regardless of whether a program is triggered
+                    image = capture_image_from_camera()
+                    if image is None:
+                        raise ValueError("Failed to capture image")
+                    image_corrected = region_based_correction(image)
 
-#                     image = image_corrected[CROP_Y1:CROP_Y2, CROP_X1:CROP_X2]
+                    image = image_corrected[CROP_Y1:CROP_Y2, CROP_X1:CROP_X2]
                     
-#                     hue_value = detect_test_tube(image)
-#                     if hue_value is None:
-#                         raise ValueError("Failed to detect test tube hues")
+                    hue_value = detect_test_tube(image)
+                    if hue_value is None:
+                        raise ValueError("Failed to detect test tube hues")
                     
-#                     # Save the hue values and image
-#                     timestamp = datetime.datetime.now()
-#                     row_hue = [timestamp] + [hue_value[f'tube_{i}']["hue"] for i in range(1, 9)]
-#                     df_hue.loc[len(df_hue)] = row_hue
-#                     df_hue.to_csv(hue_csv_file, index=False)
+                    # Save the hue values and image
+                    timestamp = datetime.datetime.now()
+                    row_hue = [timestamp] + [hue_value[f'tube_{i}']["hue"] for i in range(1, 9)]
+                    df_hue.loc[len(df_hue)] = row_hue
+                    df_hue.to_csv(hue_csv_file, index=False)
 
-#                     latest_image_path = os.path.join(image_dir, f'test_tube_{timestamp.strftime("%Y%m%d_%H%M%S")}.jpg')
-#                     cv2.imwrite(latest_image_path, image, [cv2.IMWRITE_JPEG_QUALITY, 85])
-#                     print(f"Saved image: {latest_image_path}")
+                    latest_image_path = os.path.join(image_dir, f'test_tube_{timestamp.strftime("%Y%m%d_%H%M%S")}.jpg')
+                    cv2.imwrite(latest_image_path, image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    print(f"Saved image: {latest_image_path}")
 
-#                     hue_n = hue_value['tube_1']['hue']  # Assuming tube_1 is Tube 1 (N)
+                    hue_n = hue_value['tube_1']['hue']  # Assuming tube_1 is Tube 1 (N)
 
-#                     if update_hue_n_and_check(hue_n):
-#                         table_data = []
+                    if update_hue_n_and_check(hue_n):
+                        table_data = []
 
-#                         # Add Tube 1 (N) hue value
-#                         table_data.append({
-#                             "Tube": "Tube 1 (N)",
-#                             "Hue Value": hue_n,
-#                             "C Value": "",
-#                             "Result": ""
-#                         })
-#                         program_result = {
-#                             'total_result': "Mẫu chứng âm không đạt. Dừng phản ứng",
-#                             'table_data': table_data
-#                         }
-#                         print(f"Program stopped: Hue N condition met after 5 cycles, Hue N: {hue_n}")
-#                         program_trigger = False
-#                         elapsed_time = 0
-#                         start_time = 0
-#                         continue  # Exit the loop
+                        # Add Tube 1 (N) hue value
+                        table_data.append({
+                            "Tube": "Tube 1 (N)",
+                            "Hue Value": hue_n,
+                            "C Value": "",
+                            "Result": ""
+                        })
+                        program_result = {
+                            'total_result': "Mẫu chứng âm không đạt. Dừng phản ứng",
+                            'table_data': table_data
+                        }
+                        print(f"Program stopped: Hue N condition met after 5 cycles, Hue N: {hue_n}")
+                        program_trigger = False
+                        elapsed_time = 0
+                        start_time = 0
+                        continue  # Exit the loop
 
                     
-#                     if selected_program == 1:
-#                         program_return = program_1_at_t1(
-#                             hue_value['tube_2']['hue'],  # tube_I
-#                             hue_value['tube_3']['hue'],  # tube_P
-#                             hue_value['tube_1']['hue'],  # tube_N
-#                             [hue_value[f'tube_{i}']['hue'] for i in range(4, 9)]  # tubes T4 to T8
-#                         )
-#                         program_result = {
-#                             'total_result': program_return['total_result'],
-#                             'table_data': program_return['table_data']
-#                         }
-#                     elif selected_program == 2:
-#                         program_return = program_2_at_t1(
-#                             hue_value['tube_1']['hue'],  # tube_N
-#                             [hue_value[f'tube_{i}']['hue'] for i in range(2, 9)]  # tubes T1 to T7
-#                         )
-#                         program_result = {
-#                             'total_result': "Chương trình 2 đang chạy",
-#                             'table_data': program_return['table_data']
-#                         }
+                    if selected_program == 1:
+                        program_return = program_1_at_t1(
+                            hue_value['tube_2']['hue'],  # tube_I
+                            hue_value['tube_3']['hue'],  # tube_P
+                            hue_value['tube_1']['hue'],  # tube_N
+                            [hue_value[f'tube_{i}']['hue'] for i in range(4, 9)]  # tubes T4 to T8
+                        )
+                        program_result = {
+                            'total_result': program_return['total_result'],
+                            'table_data': program_return['table_data']
+                        }
+                    elif selected_program == 2:
+                        program_return = program_2_at_t1(
+                            hue_value['tube_1']['hue'],  # tube_N
+                            [hue_value[f'tube_{i}']['hue'] for i in range(2, 9)]  # tubes T1 to T7
+                        )
+                        program_result = {
+                            'total_result': "Chương trình 2 đang chạy",
+                            'table_data': program_return['table_data']
+                        }
                 
-#                 else:
-#                     capture_counter += 1  # Increment the counter
+                else:
+                    capture_counter += 1  # Increment the counter
 
                 
-#                 if start_time == 0:
-#                     start_time = time.time()  # Start counting from when the program is triggered
-#                 elapsed_time = time.time() - start_time
-#                 print(f'Thời gian chạy: {elapsed_time}')
+                if start_time == 0:
+                    start_time = time.time()  # Start counting from when the program is triggered
+                elapsed_time = time.time() - start_time
+                print(f'Thời gian chạy: {elapsed_time}')
                 
-#                 current_status = "Đang chạy"
+                current_status = "Đang chạy"
 
-#                 # Check if the process time is reached
-#                 if elapsed_time >= selected_process_time:
-#                     # Handle end of process time event
-#                     if selected_program == 1:
-#                         program_return = program_1_at_end(
-#                             hue_value['tube_2']['hue'],  # tube_I
-#                             hue_value['tube_3']['hue'],  # tube_P
-#                             hue_value['tube_1']['hue'],  # tube_N
-#                             [hue_value[f'tube_{i}']['hue'] for i in range(4, 9)]  # tubes T4 to T8
-#                         )
-#                         program_result = {
-#                             'total_result': program_return['total_result'],
-#                             'table_data': program_return['table_data']
-#                         }
-#                     elif selected_program == 2:
-#                         program_return = program_2_at_end(
-#                             hue_value['tube_1']['hue'],  # tube_N
-#                             [hue_value[f'tube_{i}']['hue'] for i in range(2, 9)]  # tubes T1 to T7
-#                         )
-#                         program_result = {
-#                             'total_result': "Chương trình 2 đã kết thúc",
-#                             'table_data': program_return['table_data']
-#                         }
+                # Check if the process time is reached
+                if elapsed_time >= selected_process_time:
+                    # Handle end of process time event
+                    if selected_program == 1:
+                        program_return = program_1_at_end(
+                            hue_value['tube_2']['hue'],  # tube_I
+                            hue_value['tube_3']['hue'],  # tube_P
+                            hue_value['tube_1']['hue'],  # tube_N
+                            [hue_value[f'tube_{i}']['hue'] for i in range(4, 9)]  # tubes T4 to T8
+                        )
+                        program_result = {
+                            'total_result': program_return['total_result'],
+                            'table_data': program_return['table_data']
+                        }
+                    elif selected_program == 2:
+                        program_return = program_2_at_end(
+                            hue_value['tube_1']['hue'],  # tube_N
+                            [hue_value[f'tube_{i}']['hue'] for i in range(2, 9)]  # tubes T1 to T7
+                        )
+                        program_result = {
+                            'total_result': "Chương trình 2 đã kết thúc",
+                            'table_data': program_return['table_data']
+                        }
 
-#                     current_status = "Chương trình kết thúc"
-#                     log_program_result_to_csv(program_result)
+                    current_status = "Chương trình kết thúc"
+                    log_program_result_to_csv(program_result)
 
-#                     # Disable the trigger after the process is complete
-#                     program_trigger = False
-#                     start_time = 0
-#                     elapsed_time = 0
+                    # Disable the trigger after the process is complete
+                    program_trigger = False
+                    start_time = 0
+                    elapsed_time = 0
 
-#                 t1_interval_counter += 1  # Track time for T1 intervals
-#                 # Log to CSV at T1 intervals
-#                 if t1_interval_counter >= selected_t1:
-#                     log_program_result_to_csv(program_result)
-#                     t1_interval_counter = 0  # Reset T1 interval counter 
+                t1_interval_counter += 1  # Track time for T1 intervals
+                # Log to CSV at T1 intervals
+                if t1_interval_counter >= selected_t1:
+                    log_program_result_to_csv(program_result)
+                    t1_interval_counter = 0  # Reset T1 interval counter 
                 
                 
-#                 sleep(capture_interval)
+                sleep(capture_interval)
             
-#             else: #program trigger is false
+            else: #program trigger is false
 
-#                 sleep(5)  # Increase sleep time if no program is running
-#                 current_status = "Đang chờ"
+                sleep(5)  # Increase sleep time if no program is running
+                current_status = "Đang chờ"
                 
             
 
-#         except Exception as e:
-#             # Handle any errors and prevent thread from stopping
-#             current_status = "Chương trình gặp lỗi, hãy thử lại"
-#             print(f"Error in capture thread: {e}")
-#             sleep(5)  # Retry after a delay
+        except Exception as e:
+            # Handle any errors and prevent thread from stopping
+            current_status = "Chương trình gặp lỗi, hãy thử lại"
+            print(f"Error in capture thread: {e}")
+            sleep(5)  # Retry after a delay
 
 
 
