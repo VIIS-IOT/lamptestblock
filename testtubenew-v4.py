@@ -1000,6 +1000,33 @@ def reset():
     return jsonify({'status': 'reset'})
 
 
+@app.route('/download_backup', methods=['GET'])
+def download_backup():
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+    backup_dir = "/home/lamp/testtubenew/"
+    
+    # List all zip files in the backup directory
+    zip_files = [f for f in os.listdir(backup_dir) if f.endswith('.zip')]
+    
+    # Filter files by date range if provided
+    if start_time and end_time:
+        start_date = start_time.split('T')[0].replace('-', '')
+        end_date = end_time.split('T')[0].replace('-', '')
+        zip_files = [f for f in zip_files if start_date <= f.split('_')[1][:8] <= end_date]
+        download_filename = f"selected_backups_{start_date}_to_{end_date}.zip"
+    else:
+        download_filename = f"selected_backups_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    
+    download_filepath = os.path.join(backup_dir, download_filename)
+    
+    with zipfile.ZipFile(download_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file in zip_files:
+            file_path = os.path.join(backup_dir, file)
+            zipf.write(file_path, arcname=file)
+    
+    return send_file(download_filepath, as_attachment=True)
+
 @app.route('/latest_image')
 def latest_image():
     global latest_image_path
