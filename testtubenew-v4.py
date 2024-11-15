@@ -500,7 +500,7 @@ def program_1_at_end(hue_i, hue_p, hue_n, hue_t_list):
         if elapsed_time >= half_process_time:
             table_data[-1]["Result"] = Result.POSITIVE.value if hue_t > HUE_CONCLUSION_COMPARATOR and c_value is not None and c_value >= C_COMPARATOR else Result.NEGATIVE.value
 
-    total_result = "Thao tác tốt. Kết thúc phản ứng" if ( table_data[1]["Result"] == Result.PASSED.value and  table_data[2]["Result"] == Result.PASSED.value) else "Thao tác không đạt. Kết thúc phản ứng"
+    total_result = "Thao tác tốt. Kết thúc phản ứng" if (table_data[1]["Result"] == Result.PASSED.value and table_data[2]["Result"] == Result.PASSED.value) else "Thao tác không đạt. Kết thúc phản ứng"
 
     return {
         "total_result": total_result,
